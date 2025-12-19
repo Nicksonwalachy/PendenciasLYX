@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Pendências</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+</head>
+<body>
+
+    <div id="login-screen" class="container">
+        <h2>Acesso Corporativo</h2>
+        <input type="email" id="email" placeholder="E-mail">
+        <input type="password" id="password" placeholder="Senha">
+        <button onclick="fazerLogin()" class="btn-primary">Entrar</button>
+        <p id="msg-erro" style="color:red; margin-top:10px;"></p>
+    </div>
+
+    <div id="app-screen" class="container hidden">
+        <header>
+            <div class="user-info">
+                <h3>Painel <span id="role-badge">...</span></h3>
+                <small id="user-display">...</small>
+            </div>
+            <button onclick="logout()" class="btn-outline">Sair</button>
+        </header>
+
+        <section id="area-agendamento-form" class="card hidden" style="border-left: 5px solid #2563eb;">
+            <h3>📅 Solicitar Presença do Admin</h3>
+            <div class="grid-form">
+                <select id="ag-gerente" class="select-style">
+                    <option value="" disabled selected>Quem é você?</option>
+                    <option value="Jihad">Jihad</option>
+                    <option value="Tiago">Tiago</option>
+                    <option value="Delta">Delta</option>
+                    <option value="Nickson">Nickson</option>
+                </select>
+                <input type="date" id="ag-data">
+                <input type="time" id="ag-hora">
+                <input type="text" id="ag-motivo" placeholder="Motivo da solicitação">
+            </div>
+            <button onclick="salvarAgendamento()" class="btn-primary">Solicitar Agendamento e Notificar Admin</button>
+        </section>
+
+        <div id="container-lista-agendamentos" class="card hidden" style="background-color: #f8fafc;">
+            <h3>Agenda de Solicitações</h3>
+            <div id="lista-agendamentos" class="lista-horizontal">
+                <p>A carregar...</p>
+            </div>
+        </div>
+
+        <hr style="margin: 30px 0; border: 0; border-top: 2px solid #ddd;">
+
+        <section id="area-cadastro" class="card hidden">
+            <h3 style="border-bottom:1px solid #eee; padding-bottom:10px;">Nova Pendência</h3>
+            <div class="grid-form">
+                <input type="text" id="p-nome" placeholder="Descrição do Problema">
+                <input type="text" id="p-cliente" placeholder="Nome do Cliente">
+                <input type="text" id="p-reserva" placeholder="Nº Reserva">
+                <input type="date" id="p-data">
+                
+                <select id="p-responsavel" class="select-style">
+                    <option value="" disabled selected>Selecione o Responsável...</option>
+                    <option value="gerente1">Jihad</option>
+                    <option value="gerente2">Tiago</option>
+                    <option value="gerente3">Delta</option>
+                    <option value="gerente4">Nickson</option>
+                </select>
+            </div>
+            <button onclick="salvarPendencia()" class="btn-primary">Cadastrar e Notificar</button>
+        </section>
+
+        <div class="actions-bar">
+            <h3>Quadro de Pendências</h3>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="month" id="filtro-mes" class="input-filter-date" onchange="carregarPendencias()">
+                <button id="btn-relatorio" onclick="exportarExcel()" class="hidden btn-secondary" style="background-color: #107c41;">📊 Baixar Excel</button>
+            </div>
+        </div>
+
+        <div class="filtros-container">
+            <button class="btn-filter active" onclick="filtrar('todos', this)">Todos</button>
+            <button class="btn-filter" onclick="filtrar('abertos', this)">Em Aberto</button>
+            <button class="btn-filter" onclick="filtrar('finalizados', this)">Finalizados</button>
+        </div>
+
+        <div id="lista-pendencias">
+            <p style="text-align:center; color:#666">A carregar...</p>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
