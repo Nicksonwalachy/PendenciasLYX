@@ -5,7 +5,7 @@ const CADASTRO_GERENTES = {
     "gerente1": { nome: "Jihad", email: "jihad@t3imoveis.com.br", whatsapp: "5541988251027" },
     "gerente2": { nome: "Tiago", email: "tiagosilva.mkt@gmail.com", whatsapp: "554195163585" },
     "gerente3": { nome: "Delta", email: "delta@t3imoveis.com.br", whatsapp: "554198820165" },
-    "gerente4": { nome: "Nickson", email: "Nickson.jean21@gmail.com", whatsapp: "5541987625292" },
+    "gerente4": { nome: "Roque", email: "Roque@t3imoveis.com.br", whatsapp: "55419999999" },
     "gerente5": { nome: "Nathan", email: "Nathan@t3imoveis.com.br", whatsapp: "554199023524" },
     "gerente6": { nome: "Paulo", email: "Paulo@t3imoveis.com.br", whatsapp: "5542991426547" },
     "gerente7": { nome: "Guilherme", email: "guibizan@gmail.com", whatsapp: "5541995073396" },
@@ -388,3 +388,4 @@ function exportarExcel() {
     });
 
 }
+
