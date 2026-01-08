@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Pendências</title>
+    <title>Sistema de Pendências T3</title>
     <link rel="stylesheet" href="style.css">
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -15,7 +15,7 @@
 <body>
 
     <div id="login-screen" class="container">
-        <h2>Acesso Corporativo</h2>
+        <h2>Acesso T3 Imóveis</h2>
         <input type="email" id="email" placeholder="E-mail">
         <input type="password" id="password" placeholder="Senha">
         <button onclick="fazerLogin()" class="btn-primary">Entrar</button>
@@ -36,15 +36,14 @@
             <div class="grid-form">
                 <select id="ag-gerente" class="select-style">
                     <option value="" disabled selected>Quem é você?</option>
-                    <option value="Jihad">Jihad</option>
-                    <option value="Tiago">Tiago</option>
-                    <option value="Delta">Delta</option>
-                    <option value="Roque">Roque</option>
-                    <option value="Nathan">Nathan</option>
-                    <option value="Paulo">Paulo</option>
-                    <option value="Nickson">Guilherme</option>
-                    <option value="Nickson">Pedro</option>
-                    
+                    <option value="gerente1">Jihad</option>
+                    <option value="gerente2">Tiago</option>
+                    <option value="gerente3">Delta</option>
+                    <option value="gerente4">Roque</option>
+                    <option value="gerente5">Nathan</option>
+                    <option value="gerente6">Paulo</option>
+                    <option value="gerente7">Guilherme</option>
+                    <option value="gerente8">Pedro</option>
                 </select>
                 <input type="date" id="ag-data">
                 <input type="time" id="ag-hora">
@@ -72,14 +71,14 @@
                 
                 <select id="p-responsavel" class="select-style">
                     <option value="" disabled selected>Selecione o Responsável...</option>
-                     <option value="Jihad">Jihad</option>
-                    <option value="Tiago">Tiago</option>
-                    <option value="Delta">Delta</option>
-                    <option value="Roque">Roque</option>
-                    <option value="Nathan">Nathan</option>
-                    <option value="Paulo">Paulo</option>
-                    <option value="Nickson">Guilherme</option>
-                    <option value="Nickson">Pedro</option>
+                    <option value="gerente1">Jihad</option>
+                    <option value="gerente2">Tiago</option>
+                    <option value="gerente3">Delta</option>
+                    <option value="gerente4">Roque</option>
+                    <option value="gerente5">Nathan</option>
+                    <option value="gerente6">Paulo</option>
+                    <option value="gerente7">Guilherme</option>
+                    <option value="gerente8">Pedro</option>
                 </select>
             </div>
             <button onclick="salvarPendencia()" class="btn-primary">Cadastrar e Notificar</button>
@@ -107,6 +106,3 @@
     <script src="app.js"></script>
 </body>
 </html>
-
-
-

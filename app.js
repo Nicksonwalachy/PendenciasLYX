@@ -12,11 +12,11 @@ const CADASTRO_GERENTES = {
     "gerente8": { nome: "Pedro", email: "Pedro@t3imoveis.com.br", whatsapp: "5541996916905" }
 };
 
-// !!! NOVO: DADOS DO ADMIN PARA RECEBER NOTIFICAÇÕES DE AGENDAMENTO !!!
+// DADOS DO ADMIN
 const DADOS_ADMIN = {
     nome: "Admin",
     email: "nickson.jean21@gmail.com", 
-    whatsapp: "5541987625292" // Coloque o número do Admin aqui
+    whatsapp: "5541987625292"
 };
 
 // ==========================================
@@ -46,6 +46,7 @@ const auth = firebase.auth();
 const ADMIN_EMAIL = "nickson.jean21@gmail.com"; 
 let filtroAtual = 'todos'; 
 let roleAtual = '';
+let meuGerenteID = ''; 
 
 // ==========================================
 // 4. LÓGICA DO SISTEMA
@@ -58,12 +59,15 @@ auth.onAuthStateChanged(user => {
         
         definirMesAtual();
 
-        roleAtual = (user.email === ADMIN_EMAIL) ? 'Admin' : 'Gerente';
+        roleAtual = (user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) ? 'Admin' : 'Gerente';
         
+        if (roleAtual === 'Gerente') {
+            meuGerenteID = identificarGerentePorEmail(user.email);
+        }
+
         document.getElementById('user-display').innerText = user.email;
         document.getElementById('role-badge').innerText = roleAtual;
 
-        // --- VISIBILIDADE ---
         if (roleAtual === 'Admin') {
             document.getElementById('area-cadastro').classList.remove('hidden');
             document.getElementById('btn-relatorio').classList.remove('hidden');
@@ -72,18 +76,29 @@ auth.onAuthStateChanged(user => {
             document.getElementById('area-cadastro').classList.add('hidden');
             document.getElementById('btn-relatorio').classList.add('hidden');
             document.getElementById('area-agendamento-form').classList.remove('hidden');
+            selecionarNomeNoAgendamento();
         }
         
         document.getElementById('container-lista-agendamentos').classList.remove('hidden');
-
         carregarPendencias();
         carregarAgendamentos();
-
     } else {
         document.getElementById('login-screen').classList.remove('hidden');
         document.getElementById('app-screen').classList.add('hidden');
     }
 });
+
+function identificarGerentePorEmail(emailLogado) {
+    for (const [key, dados] of Object.entries(CADASTRO_GERENTES)) {
+        if (dados.email.toLowerCase() === emailLogado.toLowerCase()) return key;
+    }
+    return null;
+}
+
+function selecionarNomeNoAgendamento() {
+    const select = document.getElementById('ag-gerente');
+    if(meuGerenteID) select.value = meuGerenteID;
+}
 
 function definirMesAtual() {
     const hoje = new Date();
@@ -116,53 +131,41 @@ function filtrar(tipo, elemento) {
 // ==========================================
 
 function salvarAgendamento() {
-    const nome = document.getElementById('ag-gerente').value;
+    const gerenteKey = document.getElementById('ag-gerente').value;
     const data = document.getElementById('ag-data').value;
     const hora = document.getElementById('ag-hora').value;
     const motivo = document.getElementById('ag-motivo').value;
 
-    if(!nome || !data || !hora || !motivo) {
+    if(!gerenteKey || !data || !hora || !motivo) {
         alert("Preencha todos os campos do agendamento.");
         return;
     }
 
+    const nomeGerente = CADASTRO_GERENTES[gerenteKey] ? CADASTRO_GERENTES[gerenteKey].nome : "Gerente";
+
     db.collection("agendamentos").add({
-        gerente: nome,
+        gerente: nomeGerente,
+        gerenteID: gerenteKey,
         data: data,
         hora: hora,
         motivo: motivo,
         status: 'pendente',
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
     }).then(() => {
-        
-        // --- NOTIFICAR O ADMIN ---
-        
-        // 1. Email via EmailJS
-        // Estamos "reaproveitando" as variáveis do template existente para funcionar.
-        // nome_pendencia -> Motivo do Agendamento
-        // cliente -> Nome do Gerente Solicitante
-        // reserva -> Data e Hora
         const templateParams = {
             to_email: DADOS_ADMIN.email,
-            nome_gerente: "Sistema (Solicitação de Presença)",
+            nome_gerente: "Sistema Agenda",
             nome_pendencia: "AGENDAMENTO: " + motivo, 
-            cliente: "Solicitante: " + nome,
+            cliente: "Solicitante: " + nomeGerente,
             reserva: data.split('-').reverse().join('/') + " às " + hora
         };
-        
-        emailjs.send('service_ywnbbqr', 'template_7ago0v7', templateParams)
-            .then(() => console.log('Email enviado para Admin'), (err) => console.log('Erro Email', err));
+        emailjs.send('service_ywnbbqr', 'template_7ago0v7', templateParams);
 
-        // 2. WhatsApp do Admin
-        const msgZap = `Olá Admin, sou ${nome}. Solicitei sua presença dia ${data.split('-').reverse().join('/')} às ${hora}.\nMotivo: ${motivo}`;
+        const msgZap = `Olá Admin, sou ${nomeGerente}. Solicitei presença dia ${data.split('-').reverse().join('/')} às ${hora}.\nMotivo: ${motivo}`;
         const linkZap = `https://wa.me/${DADOS_ADMIN.whatsapp}?text=${encodeURIComponent(msgZap)}`;
 
-        if(confirm("Solicitação salva! Deseja avisar o Admin no WhatsApp?")) {
-            window.open(linkZap, '_blank');
-        }
-        
+        if(confirm("Solicitação salva! Deseja avisar o Admin no WhatsApp?")) window.open(linkZap, '_blank');
         document.getElementById('ag-motivo').value = "";
-
     }).catch(err => alert("Erro: " + err.message));
 }
 
@@ -171,10 +174,7 @@ function carregarAgendamentos() {
         const div = document.getElementById('lista-agendamentos');
         div.innerHTML = "";
         
-        if(snapshot.empty) {
-            div.innerHTML = "<p style='padding:10px; color:#666;'>Nenhum agendamento futuro.</p>";
-            return;
-        }
+        if(snapshot.empty) { div.innerHTML = "<p style='padding:10px; color:#666;'>Nenhum agendamento futuro.</p>"; return; }
 
         snapshot.forEach(doc => {
             const a = doc.data();
@@ -186,13 +186,11 @@ function carregarAgendamentos() {
             if(a.status === 'recusado') { classeTag = "tag-recusado"; textoTag = "Recusado"; }
 
             let dataF = a.data.split('-').reverse().join('/');
-
             let areaBotoes = "";
             let btnExcluirAgenda = "";
 
             if (roleAtual === 'Admin') {
                 btnExcluirAgenda = `<button class="btn-excluir" style="margin-top:5px;" onclick="excluirAgendamento('${id}')" title="Apagar Agendamento">🗑</button>`;
-                
                 if (a.status === 'pendente') {
                     areaBotoes = `
                         <button class="btn-agenda-aceitar" onclick="responderAgendamento('${id}', 'aceito')">✔ Aceitar</button>
@@ -207,28 +205,22 @@ function carregarAgendamentos() {
                     <h4>${a.gerente}</h4>
                     <p style="margin:5px 0; font-size:0.9em">📅 ${dataF} às ${a.hora}</p>
                     <p style="margin:5px 0; color:#666; font-size:0.9em">"${a.motivo}"</p>
-                    
                     <div style="border-top:1px solid #eee; margin-top:10px; padding-top:5px; display:flex; justify-content:space-between; align-items:center;">
                         <div>${areaBotoes}</div>
                         <div>${btnExcluirAgenda}</div>
                     </div>
-                </div>
-            `;
+                </div>`;
             div.innerHTML += card;
         });
     });
 }
 
 function responderAgendamento(id, resposta) {
-    if(confirm(`Deseja marcar como ${resposta}?`)) {
-        db.collection("agendamentos").doc(id).update({ status: resposta });
-    }
+    if(confirm(`Deseja marcar como ${resposta}?`)) db.collection("agendamentos").doc(id).update({ status: resposta });
 }
 
 function excluirAgendamento(id) {
-    if(confirm("Tem certeza que deseja apagar este agendamento permanentemente?")) {
-        db.collection("agendamentos").doc(id).delete().catch(err => alert("Erro: " + err.message));
-    }
+    if(confirm("Tem certeza que deseja apagar este agendamento?")) db.collection("agendamentos").doc(id).delete();
 }
 
 // ==========================================
@@ -236,7 +228,6 @@ function excluirAgendamento(id) {
 // ==========================================
 
 function salvarPendencia() {
-    const user = auth.currentUser;
     const gerenteKey = document.getElementById('p-responsavel').value;
     const descPendencia = document.getElementById('p-nome').value;
     const cliente = document.getElementById('p-cliente').value;
@@ -248,9 +239,13 @@ function salvarPendencia() {
         return;
     }
 
+    // GERA O NÚMERO DE PROTOCOLO (5 DIGITOS)
+    const numeroProtocolo = Math.floor(10000 + Math.random() * 90000);
+
     const dadosGerente = CADASTRO_GERENTES[gerenteKey];
 
     db.collection("pendencias").add({
+        numero: numeroProtocolo, // Salva o numero
         nome: descPendencia,
         cliente: cliente,
         reserva: reserva,
@@ -264,16 +259,16 @@ function salvarPendencia() {
         const templateParams = {
             to_email: dadosGerente.email,
             nome_gerente: dadosGerente.nome,
-            nome_pendencia: descPendencia,
+            nome_pendencia: "#" + numeroProtocolo + " - " + descPendencia, // Envia no email
             cliente: cliente,
             reserva: reserva
         };
-        emailjs.send('service_ywnbbqr', 'template_3h1wgqi', templateParams);
+        emailjs.send('service_ywnbbqr', 'template_7ago0v7', templateParams);
 
-        const msgZap = `Olá ${dadosGerente.nome}, nova pendência!\n\nCliente: ${cliente}\nProblema: ${descPendencia}`;
+        const msgZap = `Olá ${dadosGerente.nome}, Pendência #${numeroProtocolo}\n\nCliente: ${cliente}\nProblema: ${descPendencia}`;
         const linkZap = `https://wa.me/${dadosGerente.whatsapp}?text=${encodeURIComponent(msgZap)}`;
 
-        if(confirm("Salvo! Abrir WhatsApp?")) window.open(linkZap, '_blank');
+        if(confirm(`Pendência #${numeroProtocolo} Salva! Abrir WhatsApp?`)) window.open(linkZap, '_blank');
         document.querySelectorAll('#area-cadastro input').forEach(i => i.value = '');
         document.getElementById('p-responsavel').value = "";
         definirMesAtual();
@@ -294,10 +289,18 @@ function carregarPendencias() {
         snapshot.forEach((doc) => {
             const p = doc.data();
             const id = doc.id;
+            
+            // Garante que existe numero (para registros antigos)
+            const protocolo = p.numero ? `#${p.numero}` : "S/N";
 
             if (p.data && !p.data.startsWith(mesFiltro)) return;
             if (filtroAtual === 'abertos' && p.status === 'aprovado') return;
             if (filtroAtual === 'finalizados' && p.status !== 'aprovado') return;
+
+            // Filtro de Privacidade
+            if (roleAtual === 'Gerente') {
+                if (p.gerenteID !== meuGerenteID) return;
+            }
 
             itensVisiveis++;
 
@@ -336,7 +339,7 @@ function carregarPendencias() {
             const card = `
                 <div class="item-pendencia status-${p.status}">
                     <div>
-                        <div style="margin-bottom:5px">${textoBadge}</div>
+                        <div style="margin-bottom:5px">${textoBadge} <span style="color:#999; font-size:0.8em; margin-left:10px;">${protocolo}</span></div>
                         <strong>${p.nome}</strong> <br>
                         <span style="color:#555">Cliente: ${p.cliente} (Res: ${p.reserva})</span><br>
                         <small style="color:#2563eb; font-weight:bold">Responsável: ${p.gerente}</small> | <small>${dataF}</small>
@@ -348,7 +351,7 @@ function carregarPendencias() {
             lista.innerHTML += card;
         });
 
-        if (itensVisiveis === 0) lista.innerHTML = "<p style='text-align:center; color:#999; margin-top:20px;'>Nenhuma pendência encontrada neste mês/filtro.</p>";
+        if (itensVisiveis === 0) lista.innerHTML = "<p style='text-align:center; color:#999; margin-top:20px;'>Nenhuma pendência encontrada para você neste mês/filtro.</p>";
     });
 }
 
@@ -371,6 +374,7 @@ function exportarExcel() {
         snap.forEach((doc) => {
             let p = doc.data();
             dados.push({
+                "ID": p.numero || "S/N", // Nova coluna ID
                 "Status": p.status.toUpperCase(),
                 "Pendência": p.nome,
                 "Gerente": p.gerente,
@@ -386,6 +390,4 @@ function exportarExcel() {
         XLSX.utils.book_append_sheet(wb, ws, "Pendencias");
         XLSX.writeFile(wb, "Relatorio_Pendencias.xlsx");
     });
-
 }
-
