@@ -10,12 +10,12 @@ const CADASTRO_GERENTES = {
     "gerente6": { nome: "Paulo", email: "Paulo@t3imoveis.com.br", whatsapp: "5542991426547" },
     "gerente7": { nome: "Guilherme", email: "guibizan@gmail.com", whatsapp: "5541995073396" },
     "gerente8": { nome: "Pedro", email: "Pedro@t3imoveis.com.br", whatsapp: "5541996916905" },
-    "gerente9": { nome: "Nickson", email: "nickson@t3imoveis.com.br", whatsapp: "5541987625292" }
+    "gerente9": { nome: "Nickson", email: "nickson.jean21@gmail.com", whatsapp: "5541987625292" }
 };
 
 const DADOS_ADMIN = {
     nome: "Admin",
-    email: "nickson.jean21@gmail.com", 
+    email: "NICKSON@T3IMOVEIS.COM.BR", 
     whatsapp: "5541987625292"
 };
 
