@@ -5,10 +5,10 @@ Este é um sistema Web (Single Page Application) desenvolvido para gerenciar pen
 ## 🚀 Funcionalidades
 
 ### Perfil: Administrador
-* **Gestão de Pendências:** Cadastra novas pendências atribuindo a um gerente específico.
+* **Gestão de Pendências:** Cadastra novas pendências (Título + Descrição Detalhada) atribuindo a um gerente específico.
 * **Aprovação:** Aprova ou Recusa a resolução de problemas enviada pelos gerentes.
 * **Visão Geral:** Visualiza todas as pendências de todos os gerentes.
-* **Relatórios:** Exporta relatório completo em Excel (.xlsx).
+* **Relatórios:** Exporta relatório completo em Excel (.xlsx) contendo Título, Descrição e ID.
 * **Agenda:** Recebe solicitações de agendamento, podendo aceitar, recusar ou excluir.
 * **Notificações:** Recebe alertas via E-mail e WhatsApp quando um gerente solicita agendamento.
 

@@ -44,7 +44,7 @@
                     <option value="gerente6">Paulo</option>
                     <option value="gerente7">Guilherme</option>
                     <option value="gerente8">Pedro</option>
-                </select>
+                    <option value="gerente9">Nickson</option> </select>
                 <input type="date" id="ag-data">
                 <input type="time" id="ag-hora">
                 <input type="text" id="ag-motivo" placeholder="Motivo da solicitação">
@@ -64,7 +64,7 @@
         <section id="area-cadastro" class="card hidden">
             <h3 style="border-bottom:1px solid #eee; padding-bottom:10px;">Nova Pendência</h3>
             <div class="grid-form">
-                <input type="text" id="p-nome" placeholder="Descrição do Problema">
+                <input type="text" id="p-titulo" placeholder="Título da Pendência (Resumo)" style="font-weight:bold;">
                 <input type="text" id="p-cliente" placeholder="Nome do Cliente">
                 <input type="text" id="p-reserva" placeholder="Nº Reserva">
                 <input type="date" id="p-data">
@@ -79,7 +79,9 @@
                     <option value="gerente6">Paulo</option>
                     <option value="gerente7">Guilherme</option>
                     <option value="gerente8">Pedro</option>
-                </select>
+                    <option value="gerente9">Nickson</option> </select>
+
+                <textarea id="p-descricao" rows="5" placeholder="Descrição detalhada..." class="full-width-input"></textarea>
             </div>
             <button onclick="salvarPendencia()" class="btn-primary">Cadastrar e Notificar</button>
         </section>

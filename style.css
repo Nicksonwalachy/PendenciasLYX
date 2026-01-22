@@ -4,7 +4,10 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:
 
 /* Login */
 #login-screen { max-width: 350px; background: white; padding: 40px; border-radius: 10px; margin-top: 80px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
+
+/* Inputs */
+input, select, textarea { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 14px; font-family: inherit; }
+textarea { resize: vertical; min-height: 100px; }
 .select-style { border: 1px solid #2563eb; background-color: #f0f7ff; color: #333; font-weight: bold; }
 .input-filter-date { width: auto; padding: 8px; margin: 0; border: 1px solid #ccc; background: white; cursor: pointer; }
 
@@ -16,36 +19,46 @@ header { display: flex; justify-content: space-between; align-items: center; mar
 /* Cards Layout */
 .card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 25px; }
 .grid-form { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
-@media (max-width: 600px) { .grid-form { grid-template-columns: 1fr; } }
+.full-width-input { grid-column: span 2; }
+@media (max-width: 600px) { .grid-form { grid-template-columns: 1fr; } .full-width-input { grid-column: span 1; } }
 
-/* === ESTILO AGENDAMENTOS === */
-.lista-horizontal { display: flex; gap: 15px; overflow-x: auto; padding-bottom: 10px; }
-.card-agenda {
-    min-width: 250px;
-    background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 15px;
-    position: relative;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+/* === HISTÓRICO (NOVO) === */
+.historico-box {
+    margin-top: 15px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 10px;
+    font-size: 0.85em;
 }
+.hist-item {
+    border-bottom: 1px solid #eee;
+    padding: 5px 0;
+    color: #555;
+}
+.hist-item:last-child { border-bottom: none; }
+.hist-data { font-weight: bold; color: #2563eb; margin-right: 5px; }
+.btn-historico { background: #64748b; color: white; padding: 5px 10px; font-size: 0.8em; margin-top: 5px; width: 100%; }
+
+/* Agendamentos */
+.lista-horizontal { display: flex; gap: 15px; overflow-x: auto; padding-bottom: 10px; }
+.card-agenda { min-width: 250px; background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
 .card-agenda h4 { margin: 0 0 5px 0; font-size: 1em; }
 .tag-agenda { font-size: 0.8em; padding: 3px 8px; border-radius: 12px; font-weight: bold; display: inline-block; margin-bottom: 5px;}
 .tag-pendente { background: #e0f2fe; color: #0284c7; }
 .tag-aceito { background: #dcfce7; color: #16a34a; }
 .tag-recusado { background: #fee2e2; color: #dc2626; }
-
 .btn-agenda-aceitar { background: #16a34a; color: white; padding: 5px 10px; border:none; border-radius:4px; font-size:0.8em; margin-top:5px; }
 .btn-agenda-recusar { background: #dc2626; color: white; padding: 5px 10px; border:none; border-radius:4px; font-size:0.8em; margin-top:5px; margin-left:5px;}
 
-/* === PENDÊNCIAS === */
+/* Pendências */
 .actions-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
 .filtros-container { margin-bottom: 20px; display: flex; gap: 10px; }
 .btn-filter { background: #e5e7eb; color: #374151; border: none; border-radius: 20px; padding: 8px 16px; font-size: 0.9em; cursor: pointer; transition: 0.2s; }
 .btn-filter.active { background: #2563eb; color: white; font-weight: bold; }
 .btn-filter:hover { opacity: 0.8; }
 
-.item-pendencia { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 12px; border-left: 6px solid #ccc; display: flex; justify-content: space-between; align-items: center; }
+.item-pendencia { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 12px; border-left: 6px solid #ccc; display: flex; justify-content: space-between; align-items: flex-start; }
 .status-pendente { border-left-color: #ef4444; }
 .status-analise { border-left-color: #f59e0b; }
 .status-aprovado { border-left-color: #22c55e; opacity: 0.7; background-color: #fcfcfc; }
@@ -64,7 +77,7 @@ button:hover { opacity: 0.9; }
 
 @media print {
     body { background: white; padding: 0; }
-    #area-cadastro, #area-agendamento-form, header, .filtros-container, .input-filter-date, .btn-resolver, .btn-aprovar, .btn-excluir, .btn-recusar, #login-screen, button { display: none !important; }
+    #area-cadastro, #area-agendamento-form, header, .filtros-container, .input-filter-date, .btn-resolver, .btn-aprovar, .btn-excluir, .btn-recusar, #login-screen, button, .historico-box, .btn-historico { display: none !important; }
     .item-pendencia { box-shadow: none; border: 1px solid #ddd; page-break-inside: avoid; }
     .status-aprovado { display: none; }
 }
