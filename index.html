@@ -44,7 +44,8 @@
                     <option value="gerente6">Paulo</option>
                     <option value="gerente7">Guilherme</option>
                     <option value="gerente8">Pedro</option>
-                    <option value="gerente9">Nickson</option> </select>
+                    <option value="gerente9">Nickson</option>
+                </select>
                 <input type="date" id="ag-data">
                 <input type="time" id="ag-hora">
                 <input type="text" id="ag-motivo" placeholder="Motivo da solicitação">
@@ -67,7 +68,17 @@
                 <input type="text" id="p-titulo" placeholder="Título da Pendência (Resumo)" style="font-weight:bold;">
                 <input type="text" id="p-cliente" placeholder="Nome do Cliente">
                 <input type="text" id="p-reserva" placeholder="Nº Reserva">
-                <input type="date" id="p-data">
+                
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <div style="flex:1">
+                        <label style="font-size:0.8em; color:#666;">Data Ocorrência:</label>
+                        <input type="date" id="p-data" style="margin-top:2px;">
+                    </div>
+                    <div style="flex:1">
+                        <label style="font-size:0.8em; color:#d93025; font-weight:bold;">Prazo Limite:</label>
+                        <input type="date" id="p-prazo" style="margin-top:2px; border-color:#d93025;">
+                    </div>
+                </div>
                 
                 <select id="p-responsavel" class="select-style">
                     <option value="" disabled selected>Selecione o Responsável...</option>
@@ -79,7 +90,8 @@
                     <option value="gerente6">Paulo</option>
                     <option value="gerente7">Guilherme</option>
                     <option value="gerente8">Pedro</option>
-                    <option value="gerente9">Nickson</option> </select>
+                    <option value="gerente9">Nickson</option>
+                </select>
 
                 <textarea id="p-descricao" rows="5" placeholder="Descrição detalhada..." class="full-width-input"></textarea>
             </div>
