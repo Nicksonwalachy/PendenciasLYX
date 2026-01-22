@@ -22,7 +22,7 @@ header { display: flex; justify-content: space-between; align-items: center; mar
 .full-width-input { grid-column: span 2; }
 @media (max-width: 600px) { .grid-form { grid-template-columns: 1fr; } .full-width-input { grid-column: span 1; } }
 
-/* === HISTÓRICO (CORRIGIDO PARA QUEBRA DE LINHA) === */
+/* === HISTÓRICO === */
 .historico-box {
     margin-top: 15px;
     background: #f8fafc;
@@ -30,20 +30,18 @@ header { display: flex; justify-content: space-between; align-items: center; mar
     border-radius: 6px;
     padding: 10px;
     font-size: 0.85em;
-    max-height: 300px; /* Limita altura se ficar muito grande */
-    overflow-y: auto;  /* Adiciona scroll se necessário */
+    max-height: 300px;
+    overflow-y: auto;
 }
 
 .hist-item {
     border-bottom: 1px solid #eee;
     padding: 8px 0;
     color: #555;
-    
-    /* PROPRIEDADES DE QUEBRA DE LINHA DINÂMICA */
-    white-space: pre-wrap;       /* Respeita 'Enter' e espaços */
-    word-break: break-word;      /* Quebra palavras longas */
-    overflow-wrap: break-word;   /* Garante que não estoure a div */
-    max-width: 100%;             /* Garante que respeite o pai */
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
 }
 
 .hist-item:last-child { border-bottom: none; }
@@ -78,13 +76,11 @@ header { display: flex; justify-content: space-between; align-items: center; mar
     display: flex; 
     justify-content: space-between; 
     align-items: flex-start; 
-    
-    /* Garante que o container principal também não estoure */
     max-width: 100%;
     overflow: hidden; 
 }
 
-/* Aplica quebra de linha na descrição da pendência também */
+/* Quebra de linha descrição */
 .item-pendencia p {
     white-space: pre-wrap;
     word-break: break-word;

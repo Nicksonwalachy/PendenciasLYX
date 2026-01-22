@@ -80,6 +80,12 @@
                     </div>
                 </div>
                 
+                <select id="p-diretoria" class="select-style" style="border-color: #2f855a; background-color: #f0fff4;">
+                    <option value="" disabled selected>Selecione a Diretoria...</option>
+                    <option value="Roque">Diretoria Roque</option>
+                    <option value="Cesar">Diretoria Cesar</option>
+                </select>
+
                 <select id="p-responsavel" class="select-style">
                     <option value="" disabled selected>Selecione o Responsável...</option>
                     <option value="gerente1">Jihad</option>
@@ -102,7 +108,9 @@
             <h3>Quadro de Pendências</h3>
             <div style="display: flex; gap: 10px; align-items: center;">
                 <input type="month" id="filtro-mes" class="input-filter-date" onchange="carregarPendencias()">
-                <button id="btn-relatorio" onclick="exportarExcel()" class="hidden btn-secondary" style="background-color: #107c41;">📊 Baixar Excel</button>
+                
+                <button id="btn-relatorio-roque" onclick="exportarExcel('Roque')" class="hidden btn-secondary" style="background-color: #107c41;">📊 Excel Roque</button>
+                <button id="btn-relatorio-cesar" onclick="exportarExcel('Cesar')" class="hidden btn-secondary" style="background-color: #2f855a;">📊 Excel Cesar</button>
             </div>
         </div>
 

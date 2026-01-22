@@ -10,12 +10,12 @@ const CADASTRO_GERENTES = {
     "gerente6": { nome: "Paulo", email: "Paulo@t3imoveis.com.br", whatsapp: "5542991426547" },
     "gerente7": { nome: "Guilherme", email: "guibizan@gmail.com", whatsapp: "5541995073396" },
     "gerente8": { nome: "Pedro", email: "Pedro@t3imoveis.com.br", whatsapp: "5541996916905" },
-    "gerente9": { nome: "Nickson", email: "nickson.jean21@gmail.com", whatsapp: "5541987625292" }
+    "gerente9": { nome: "Nickson", email: "nickson@t3imoveis.com.br", whatsapp: "5541987625292" }
 };
 
 const DADOS_ADMIN = {
     nome: "Admin",
-    email: "NICKSON@T3IMOVEIS.COM.BR", 
+    email: "nickson.jean21@gmail.com", 
     whatsapp: "5541987625292"
 };
 
@@ -68,13 +68,16 @@ auth.onAuthStateChanged(user => {
         document.getElementById('user-display').innerText = user.email;
         document.getElementById('role-badge').innerText = roleAtual;
 
+        // VISIBILIDADE DE BOTÕES E ÁREAS
         if (roleAtual === 'Admin') {
             document.getElementById('area-cadastro').classList.remove('hidden');
-            document.getElementById('btn-relatorio').classList.remove('hidden');
+            document.getElementById('btn-relatorio-roque').classList.remove('hidden');
+            document.getElementById('btn-relatorio-cesar').classList.remove('hidden');
             document.getElementById('area-agendamento-form').classList.add('hidden');
         } else {
             document.getElementById('area-cadastro').classList.add('hidden');
-            document.getElementById('btn-relatorio').classList.add('hidden');
+            document.getElementById('btn-relatorio-roque').classList.add('hidden');
+            document.getElementById('btn-relatorio-cesar').classList.add('hidden');
             document.getElementById('area-agendamento-form').classList.remove('hidden');
             selecionarNomeNoAgendamento();
         }
@@ -271,6 +274,7 @@ function excluirAgendamento(id) {
 
 function salvarPendencia() {
     const gerenteKey = document.getElementById('p-responsavel').value;
+    const diretoria = document.getElementById('p-diretoria').value;
     const titulo = document.getElementById('p-titulo').value;
     const descricao = document.getElementById('p-descricao').value;
     const cliente = document.getElementById('p-cliente').value;
@@ -278,8 +282,8 @@ function salvarPendencia() {
     const dataOcorr = document.getElementById('p-data').value;
     const prazo = document.getElementById('p-prazo').value;
 
-    if (!titulo || !gerenteKey || !dataOcorr) {
-        alert("Preencha Título, Gerente e Data.");
+    if (!titulo || !gerenteKey || !dataOcorr || !diretoria) {
+        alert("Preencha Título, Diretoria, Gerente e Data.");
         return;
     }
 
@@ -302,6 +306,7 @@ function salvarPendencia() {
         reserva: reserva,
         data: dataOcorr, 
         prazo: prazo,
+        diretoria: diretoria, // Salva a diretoria
         notificadoVencimento: false,
         gerente: dadosGerente.nome,
         gerenteID: gerenteKey,
@@ -315,19 +320,20 @@ function salvarPendencia() {
         const templateParams = {
             to_email: dadosGerente.email,
             nome_gerente: dadosGerente.nome,
-            nome_pendencia: `#${numeroProtocolo} - ${titulo} (Prazo: ${prazoF})`,
+            nome_pendencia: `#${numeroProtocolo} - ${titulo} (Diretoria ${diretoria})`,
             cliente: cliente,
             reserva: reserva
         };
         emailjs.send('service_ywnbbqr', 'template_7ago0v7', templateParams);
 
-        const msgZap = `Olá ${dadosGerente.nome}, Pendência #${numeroProtocolo}\n\n*Título:* ${titulo}\n*Cliente:* ${cliente}\n*Prazo:* ${prazoF}\n\n*Detalhes:* ${descricao}`;
+        const msgZap = `Olá ${dadosGerente.nome}, Pendência #${numeroProtocolo}\nDiretoria: ${diretoria}\n*Título:* ${titulo}\n*Cliente:* ${cliente}\n*Prazo:* ${prazoF}\n\n*Detalhes:* ${descricao}`;
         const linkZap = `https://wa.me/${dadosGerente.whatsapp}?text=${encodeURIComponent(msgZap)}`;
 
         if(confirm(`Pendência #${numeroProtocolo} Salva! Abrir WhatsApp?`)) window.open(linkZap, '_blank');
         
         document.querySelectorAll('#area-cadastro input, #area-cadastro textarea').forEach(i => i.value = '');
         document.getElementById('p-responsavel').value = "";
+        document.getElementById('p-diretoria').value = "";
         definirMesAtual();
 
     }).catch(err => alert("Erro ao salvar: " + err.message));
@@ -383,6 +389,7 @@ function carregarPendencias() {
             const id = doc.id;
             
             const protocolo = p.numero ? `#${p.numero}` : "S/N";
+            const nomeDiretoria = p.diretoria ? ` | Dir. ${p.diretoria}` : "";
 
             if (p.data && !p.data.startsWith(mesFiltro)) return;
             if (filtroAtual === 'abertos' && p.status === 'aprovado') return;
@@ -466,7 +473,7 @@ function carregarPendencias() {
                         ${displayDesc}
                         <div style="margin-top:10px; font-size:0.9em; color:#666;">
                             <span>Cliente: ${p.cliente} (Res: ${p.reserva})</span><br>
-                            <span style="color:#2563eb; font-weight:bold">Responsável: ${p.gerente}</span> | <span>${dataF}</span>
+                            <span style="color:#2563eb; font-weight:bold">Responsável: ${p.gerente}${nomeDiretoria}</span> | <span>${dataF}</span>
                         </div>
                         ${areaHistorico}
                     </div>
@@ -481,91 +488,23 @@ function carregarPendencias() {
     });
 }
 
-// --- FUNÇÃO ATUALIZADA COM PROMPT DE MOTIVO ---
-function mudarStatus(id, st) {
-    let dados = { status: st };
-    let textoLog = "";
-    let motivo = "";
-
-    // 1. Caso DEVOLUÇÃO (Recusa)
-    if (st === 'pendente') {
-        motivo = prompt("Motivo da devolução (Obrigatório):");
-        
-        // Validação: Se cancelar ou deixar vazio, para tudo.
-        if (motivo === null) return;
-        if (!motivo.trim()) {
-            alert("É obrigatório informar o motivo para devolver a pendência.");
-            return;
-        }
-
-        dados.dataResolucao = ""; 
-        textoLog = `Admin Recusou. Motivo: ${motivo}`;
-    } 
-    // 2. Caso GERENTE RESOLVEU
-    else if (st === 'analise') { 
-        if (!confirm("Confirma que resolveu o problema?")) return;
-        dados.dataResolucao = new Date().toLocaleString('pt-BR');
-        textoLog = "Gerente marcou como Resolvido";
-    }
-    // 3. Caso APROVADO
-    else if (st === 'aprovado') {
-        if (!confirm("Aprovar e finalizar pendência?")) return;
-        textoLog = "Admin Aprovou a resolução";
-    }
-
-    // Grava no Histórico
-    const novoLog = {
-        data: new Date().toLocaleString('pt-BR'),
-        acao: textoLog,
-        usuario: auth.currentUser.email
-    };
-    dados.historico = firebase.firestore.FieldValue.arrayUnion(novoLog);
-
-    // Salva no Banco e Notifica (Se for recusa)
-    if (st === 'pendente') {
-        db.collection("pendencias").doc(id).get().then(doc => {
-            if (doc.exists) {
-                const p = doc.data();
-                const dadosGerente = CADASTRO_GERENTES[p.gerenteID];
-
-                if (dadosGerente) {
-                    // E-mail
-                    const templateParams = {
-                        to_email: dadosGerente.email,
-                        nome_gerente: dadosGerente.nome,
-                        nome_pendencia: `[DEVOLVIDA] #${p.numero} - ${p.titulo}`,
-                        cliente: p.cliente,
-                        // Aqui inserimos o motivo digitado no prompt
-                        reserva: `MOTIVO DA DEVOLUÇÃO: ${motivo}` 
-                    };
-                    emailjs.send('service_ywnbbqr', 'template_7ago0v7', templateParams);
-
-                    // WhatsApp
-                    const msgZap = `Olá ${dadosGerente.nome}, a pendência #${p.numero} foi devolvida.\n*Motivo:* ${motivo}`;
-                    const linkZap = `https://wa.me/${dadosGerente.whatsapp}?text=${encodeURIComponent(msgZap)}`;
-                    window.open(linkZap, '_blank');
-                }
-            }
-            return db.collection("pendencias").doc(id).update(dados);
-        }).catch(err => alert("Erro: " + err.message));
-    } else {
-        // Para os outros casos, apenas salva
-        db.collection("pendencias").doc(id).update(dados);
-    }
-}
-
-function excluirPendencia(id) {
-    if(confirm("Excluir permanentemente?")) db.collection("pendencias").doc(id).delete();
-}
-
-function exportarExcel() {
+// --- FUNÇÃO DE EXPORTAÇÃO FILTRADA ATUALIZADA ---
+function exportarExcel(filtroDiretoria) {
     db.collection("pendencias").orderBy("timestamp", "desc").get().then((snap) => {
         let dados = [];
         snap.forEach((doc) => {
             let p = doc.data();
+            
+            // 1. Filtro de Diretoria
+            if (p.diretoria !== filtroDiretoria) return;
+
+            // 2. Filtro de Status (Apenas em Aberto) - PULA OS APROVADOS
+            if (p.status === 'aprovado') return;
+
             dados.push({
                 "ID": p.numero || "S/N",
                 "Status": p.status.toUpperCase(),
+                "Diretoria": p.diretoria,
                 "Título": p.titulo || p.nome,
                 "Descrição": p.descricao || "",
                 "Gerente": p.gerente,
@@ -576,10 +515,75 @@ function exportarExcel() {
                 "Resolvido em": p.dataResolucao || ""
             });
         });
-        if (dados.length === 0) { alert("Sem dados."); return; }
+        
+        if (dados.length === 0) { 
+            alert(`Nenhuma pendência em aberto encontrada para a Diretoria ${filtroDiretoria}.`); 
+            return; 
+        }
+        
         const ws = XLSX.utils.json_to_sheet(dados);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Pendencias");
-        XLSX.writeFile(wb, "Relatorio_Pendencias.xlsx");
+        XLSX.utils.book_append_sheet(wb, ws, `Pendencias Abertas ${filtroDiretoria}`);
+        XLSX.writeFile(wb, `Relatorio_Abertas_${filtroDiretoria}.xlsx`);
     });
+}
+
+function mudarStatus(id, st) {
+    let msg = "";
+    let dados = { status: st };
+    let textoLog = "";
+    let motivo = "";
+
+    if (st === 'pendente') {
+        motivo = prompt("Motivo da devolução (Obrigatório):");
+        if (motivo === null) return;
+        if (!motivo.trim()) { alert("Motivo obrigatório."); return; }
+        dados.dataResolucao = ""; 
+        textoLog = `Admin Recusou. Motivo: ${motivo}`;
+    } 
+    else if (st === 'analise') { 
+        if (!confirm("Confirma resolução?")) return;
+        dados.dataResolucao = new Date().toLocaleString('pt-BR');
+        textoLog = "Gerente marcou como Resolvido";
+    }
+    else if (st === 'aprovado') {
+        if (!confirm("Aprovar finalização?")) return;
+        textoLog = "Admin Aprovou a resolução";
+    }
+
+    const novoLog = {
+        data: new Date().toLocaleString('pt-BR'),
+        acao: textoLog,
+        usuario: auth.currentUser.email
+    };
+    dados.historico = firebase.firestore.FieldValue.arrayUnion(novoLog);
+
+    if (st === 'pendente') {
+        db.collection("pendencias").doc(id).get().then(doc => {
+            if (doc.exists) {
+                const p = doc.data();
+                const dadosGerente = CADASTRO_GERENTES[p.gerenteID];
+                if (dadosGerente) {
+                    const templateParams = {
+                        to_email: dadosGerente.email,
+                        nome_gerente: dadosGerente.nome,
+                        nome_pendencia: `[DEVOLVIDA] #${p.numero} - ${p.titulo}`,
+                        cliente: p.cliente,
+                        reserva: `MOTIVO: ${motivo}` 
+                    };
+                    emailjs.send('service_ywnbbqr', 'template_7ago0v7', templateParams);
+                    const msgZap = `Olá ${dadosGerente.nome}, a pendência #${p.numero} foi devolvida.\n*Motivo:* ${motivo}`;
+                    const linkZap = `https://wa.me/${dadosGerente.whatsapp}?text=${encodeURIComponent(msgZap)}`;
+                    window.open(linkZap, '_blank');
+                }
+            }
+            return db.collection("pendencias").doc(id).update(dados);
+        }).catch(err => alert("Erro: " + err.message));
+    } else {
+        db.collection("pendencias").doc(id).update(dados);
+    }
+}
+
+function excluirPendencia(id) {
+    if(confirm("Excluir permanentemente?")) db.collection("pendencias").doc(id).delete();
 }
