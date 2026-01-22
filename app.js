@@ -68,7 +68,6 @@ auth.onAuthStateChanged(user => {
         document.getElementById('user-display').innerText = user.email;
         document.getElementById('role-badge').innerText = roleAtual;
 
-        // VISIBILIDADE DE BOTÕES E ÁREAS
         if (roleAtual === 'Admin') {
             document.getElementById('area-cadastro').classList.remove('hidden');
             document.getElementById('btn-relatorio-roque').classList.remove('hidden');
@@ -488,17 +487,13 @@ function carregarPendencias() {
     });
 }
 
-// --- FUNÇÃO DE EXPORTAÇÃO FILTRADA ATUALIZADA ---
 function exportarExcel(filtroDiretoria) {
     db.collection("pendencias").orderBy("timestamp", "desc").get().then((snap) => {
         let dados = [];
         snap.forEach((doc) => {
             let p = doc.data();
             
-            // 1. Filtro de Diretoria
             if (p.diretoria !== filtroDiretoria) return;
-
-            // 2. Filtro de Status (Apenas em Aberto) - PULA OS APROVADOS
             if (p.status === 'aprovado') return;
 
             dados.push({
@@ -528,6 +523,7 @@ function exportarExcel(filtroDiretoria) {
     });
 }
 
+// --- FUNÇÃO ATUALIZADA: NOTIFICAR ADMIN ---
 function mudarStatus(id, st) {
     let msg = "";
     let dados = { status: st };
@@ -558,6 +554,7 @@ function mudarStatus(id, st) {
     };
     dados.historico = firebase.firestore.FieldValue.arrayUnion(novoLog);
 
+    // 1. LÓGICA DE RECUSA (Notifica Gerente)
     if (st === 'pendente') {
         db.collection("pendencias").doc(id).get().then(doc => {
             if (doc.exists) {
@@ -579,7 +576,37 @@ function mudarStatus(id, st) {
             }
             return db.collection("pendencias").doc(id).update(dados);
         }).catch(err => alert("Erro: " + err.message));
-    } else {
+    } 
+    // 2. LÓGICA DE RESOLUÇÃO (Notifica Admin) - NOVO!
+    else if (st === 'analise') {
+        db.collection("pendencias").doc(id).get().then(doc => {
+            if (doc.exists) {
+                const p = doc.data();
+                const nomeGerente = CADASTRO_GERENTES[p.gerenteID] ? CADASTRO_GERENTES[p.gerenteID].nome : "Gerente";
+
+                // E-mail para Admin
+                const templateParams = {
+                    to_email: DADOS_ADMIN.email,
+                    nome_gerente: "Admin",
+                    nome_pendencia: `[RESOLVIDA] #${p.numero} - ${p.titulo}`,
+                    cliente: p.cliente,
+                    reserva: `Gerente ${nomeGerente} marcou como resolvida. Aguardando aprovação.`
+                };
+                emailjs.send('service_ywnbbqr', 'template_7ago0v7', templateParams);
+
+                // WhatsApp para Admin
+                const msgZap = `Olá Admin, a pendência #${p.numero} (${p.titulo}) foi marcada como resolvida por ${nomeGerente}.`;
+                const linkZap = `https://wa.me/${DADOS_ADMIN.whatsapp}?text=${encodeURIComponent(msgZap)}`;
+                
+                if(confirm("Notificar Admin via WhatsApp?")) {
+                    window.open(linkZap, '_blank');
+                }
+            }
+            return db.collection("pendencias").doc(id).update(dados);
+        }).catch(err => alert("Erro: " + err.message));
+    } 
+    // 3. APROVAÇÃO (Só salva)
+    else {
         db.collection("pendencias").doc(id).update(dados);
     }
 }
