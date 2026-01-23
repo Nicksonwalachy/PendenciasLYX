@@ -44,8 +44,12 @@ let roleAtual = '';
 let meuGerenteID = ''; 
 let filtroAtual = 'todos'; 
 let viewMode = 'lista'; 
+let idEmEdicao = null; // Variável para controle da edição
+
+// Instâncias dos Gráficos
 let chartStatusInstance = null;
 let chartDiretoriaInstance = null;
+let chartTipoInstance = null; // NOVO
 
 // ==========================================
 // 3. INICIALIZAÇÃO
@@ -111,7 +115,7 @@ async function carregarUsuariosDoBanco() {
             selectCadastro.add(opt1);
             selectAgendamento.add(opt2);
         });
-    } catch (err) { alert("Erro ao carregar usuários. Verifique as regras do Firebase."); }
+    } catch (err) { alert("Erro ao carregar usuários: " + err.message); }
 }
 
 function identificarGerentePorEmail(email) {
@@ -171,9 +175,10 @@ function salvarPendencia() {
     const dataOcorr = document.getElementById('p-data').value;
     const prazo = document.getElementById('p-prazo').value;
     const prioridade = document.getElementById('p-prioridade').value;
+    const tipo = document.getElementById('p-tipo').value; // NOVO CAMPO
 
-    if (!titulo || !gerenteKey || !dataOcorr || !diretoria) { 
-        alert("Preencha Título, Diretoria, Gerente e Data."); 
+    if (!titulo || !gerenteKey || !dataOcorr || !diretoria || !tipo) { 
+        alert("Preencha Título, Tipo, Diretoria, Gerente e Data."); 
         btnSalvar.innerText = textoOriginal; btnSalvar.disabled = false; return; 
     }
 
@@ -181,12 +186,12 @@ function salvarPendencia() {
     const numero = Math.floor(10000 + Math.random() * 90000);
     const dadosGerente = LISTA_USUARIOS[gerenteKey];
 
-    // Gravação direta no banco (SEM UPLOAD)
+    // Gravação
     db.collection("pendencias").add({
         numero: numero, titulo: titulo, descricao: descricao, nome: titulo, 
         cliente: cliente, reserva: reserva, data: dataOcorr, prazo: prazo, 
-        diretoria: diretoria, prioridade: prioridade, 
-        imagemUrl: "", // Sem imagem
+        diretoria: diretoria, prioridade: prioridade, tipo: tipo,
+        imagemUrl: "",
         notificadoVencimento: false, gerente: nomeGerente, gerenteID: gerenteKey, 
         status: "pendente", dataResolucao: "", 
         historico: [{ data: new Date().toLocaleString('pt-BR'), acao: "Criado", usuario: auth.currentUser.email }],
@@ -195,15 +200,16 @@ function salvarPendencia() {
     .then(() => {
         const prazoF = prazo ? prazo.split('-').reverse().join('/') : "S/ Prazo";
         if(dadosGerente && dadosGerente.email) {
-            const templateParams = { to_email: dadosGerente.email, nome_gerente: dadosGerente.nome, nome_pendencia: `#${numero} - ${titulo}`, cliente: cliente, reserva: reserva };
+            const templateParams = { to_email: dadosGerente.email, nome_gerente: dadosGerente.nome, nome_pendencia: `#${numero} - ${titulo} (${tipo})`, cliente: cliente, reserva: reserva };
             emailjs.send('service_ywnbbqr', 'template_7ago0v7', templateParams);
         }
         if(confirm("Salvo com sucesso! Abrir WhatsApp do gerente?")) {
-            if(dadosGerente && dadosGerente.whatsapp) window.open(`https://wa.me/${dadosGerente.whatsapp}?text=${encodeURIComponent(`Pendência #${numero}\n${titulo}\nPrazo: ${prazoF}`)}`, '_blank');
+            if(dadosGerente && dadosGerente.whatsapp) window.open(`https://wa.me/${dadosGerente.whatsapp}?text=${encodeURIComponent(`Pendência #${numero}\n${titulo}\nTipo: ${tipo}\nPrazo: ${prazoF}`)}`, '_blank');
         }
         document.querySelectorAll('#area-cadastro input, #area-cadastro textarea').forEach(i => i.value = '');
         document.getElementById('p-responsavel').value = "";
         document.getElementById('p-diretoria').value = "";
+        document.getElementById('p-tipo').value = ""; // LIMPAR TIPO
         definirMesAtual();
         btnSalvar.innerText = textoOriginal; btnSalvar.disabled = false;
     })
@@ -268,7 +274,6 @@ function carregarPendencias() {
     });
 }
 
-// --- FUNÇÃO DE RENDERIZAÇÃO OTIMIZADA (CLEAN & HIDDEN HISTORY) ---
 function renderizarLista(pendencias) {
     const div = document.getElementById('lista-pendencias');
     div.innerHTML = "";
@@ -302,6 +307,16 @@ function criarHTMLCard(p, mini = false) {
     const protocolo = p.numero ? `#${p.numero}` : "S/N";
     const prio = p.prioridade || "Media";
     
+    // Tratamento visual do tipo
+    const mapaTipos = {
+        'Documentacao': 'Documentação',
+        'Ato': 'Ato',
+        'FichaContato': 'Ficha de Contato',
+        'ProcessoCaixa': 'Processo Caixa',
+        'Outros': 'Outros'
+    };
+    const textoTipo = mapaTipos[p.tipo] || p.tipo || "Geral";
+
     const hoje = new Date().toISOString().split('T')[0];
     let slaBadge = "";
     if (p.prazo) {
@@ -309,25 +324,27 @@ function criarHTMLCard(p, mini = false) {
         else slaBadge = `<span class="tag-prio" style="color:var(--color-primary); border:1px solid var(--color-primary); background:transparent;">No Prazo</span>`;
     }
 
-    // Configuração para Drag & Drop (Mini card)
     const dragAttr = mini ? `draggable="true" ondragstart="drag(event)" id="card-${p.id}" data-id="${p.id}" data-status="${p.status}"` : "";
 
+    // --- LÓGICA DE BOTÕES ATUALIZADA ---
     let botoes = "";
-    if (p.status === 'pendente' && roleAtual === 'Gerente') botoes = `<button class="btn-resolver" onclick="mudarStatus('${p.id}', 'analise')">✅ Resolvi</button>`;
-    if (p.status === 'analise' && roleAtual === 'Admin') botoes = `<button class="btn-aprovar" onclick="mudarStatus('${p.id}', 'aprovado')">OK</button> <button class="btn-recusar" onclick="mudarStatus('${p.id}', 'pendente')">Recusar</button>`;
-    if (roleAtual === 'Admin') botoes += ` <button class="btn-excluir" onclick="excluirPendencia('${p.id}')">🗑</button>`;
+    const podeEditar = (roleAtual === 'Admin') || (roleAtual === 'Gerente' && p.gerenteID === meuGerenteID && p.status === 'pendente');
+    const btnEditar = podeEditar ? `<button class="btn-outline" onclick="abrirModalEdicao('${p.id}')" style="margin-right:5px; padding:6px 10px;" title="Editar">✏️</button>` : "";
 
-    // --- Versão Mini (Kanban) ---
+    if (p.status === 'pendente' && roleAtual === 'Gerente') botoes = `${btnEditar} <button class="btn-resolver" onclick="mudarStatus('${p.id}', 'analise')">✅ Resolvi</button>`;
+    else if (p.status === 'analise' && roleAtual === 'Admin') botoes = `${btnEditar} <button class="btn-aprovar" onclick="mudarStatus('${p.id}', 'aprovado')">OK</button> <button class="btn-recusar" onclick="mudarStatus('${p.id}', 'pendente')">Recusar</button>`;
+    else if (roleAtual === 'Admin') botoes += `${btnEditar} <button class="btn-excluir" onclick="excluirPendencia('${p.id}')">🗑</button>`;
+    else if (podeEditar && botoes === "") botoes = btnEditar;
+
     if (mini) {
         return `<div class="kanban-item status-${p.status}" ${dragAttr}>
-            <strong>${p.titulo}</strong><br><small>${p.cliente}</small>
+            <strong>${p.titulo}</strong>
+            <div style="font-size:0.8em; color:var(--text-secondary); margin-bottom:5px;">📁 ${textoTipo}</div>
+            <small>${p.cliente}</small>
             <div style="margin-top:5px;">${slaBadge} <span class="tag-prio prio-${prio}">${prio}</span></div>
             <div style="margin-top:5px; text-align:right;">${botoes}</div>
         </div>`;
-    } 
-    
-    // --- Versão Completa (Lista) com Histórico Oculto ---
-    else {
+    } else {
         let logsHtml = "";
         if (p.historico && p.historico.length > 0) {
             logsHtml = p.historico.map(log => `<div class="hist-item"><strong>${log.usuario.split('@')[0]}</strong> <small>(${log.data})</small><br>${log.acao}</div>`).join('');
@@ -338,7 +355,6 @@ function criarHTMLCard(p, mini = false) {
         const areaHistorico = `
             <button id="btn-hist-${p.id}" class="btn-historico" onclick="toggleHistorico('${p.id}')">📜 Ver Histórico Completo</button>
             <div id="hist-${p.id}" class="historico-box hidden">${logsHtml}</div>
-            
             <div class="chat-input-area" style="margin-top:10px;">
                 <input type="text" id="chat-input-${p.id}" class="chat-input" placeholder="Mensagem rápida...">
                 <button class="btn-secondary" onclick="enviarMensagem('${p.id}')" style="padding:5px 12px;">➤</button>
@@ -347,19 +363,26 @@ function criarHTMLCard(p, mini = false) {
 
         return `
         <div class="item-pendencia status-${p.status}">
-            <div style="flex:1; margin-right:20px;">
+            <div style="flex:1; margin-right:20px; min-width: 0;">
                 <div style="margin-bottom:8px; font-size:0.85em; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-secondary);">
                     ${p.status} • ${protocolo} • <span style="color:var(--text-primary); font-weight:bold;">${prio}</span> ${slaBadge}
                 </div>
                 <h3>${p.titulo}</h3>
-                <p>${p.descricao}</p>
+                
+                <span style="background:#eef2ff; color:#4f46e5; padding:2px 8px; border-radius:12px; font-size:0.75em; font-weight:bold; border:1px solid #c7d2fe;">
+                    📁 ${textoTipo}
+                </span>
+
+                <p style="margin-top:10px;">${p.descricao}</p>
                 <div style="font-size:0.9em; color:var(--text-secondary); margin-top:15px; padding-top:10px; border-top:1px solid var(--border-color);">
                     <strong>Cliente:</strong> ${p.cliente} | <strong>Resp:</strong> ${p.gerente} | <strong>Data:</strong> ${p.data ? p.data.split('-').reverse().join('/') : '-'}
                 </div>
                 ${areaHistorico}
             </div>
-            <div style="display:flex; flex-direction:column; gap:10px; min-width:120px;">
-                ${botoes}
+            <div style="display:flex; flex-direction:column; gap:10px; min-width:120px; align-items:flex-end;">
+                <div style="display:flex; gap:5px; flex-wrap:wrap; justify-content:flex-end;">
+                    ${botoes}
+                </div>
             </div>
         </div>`;
     }
@@ -393,15 +416,61 @@ function drop(ev) {
 }
 
 // ==========================================
-// 6. FUNCIONALIDADES AUXILIARES
+// 6. FUNCIONALIDADES AUXILIARES & EDIÇÃO
 // ==========================================
+
+function abrirModalEdicao(id) {
+    const p = dadosGlobaisParaGrafico.find(item => item.id === id);
+    if (!p) return alert("Erro ao carregar dados.");
+    idEmEdicao = id;
+    
+    document.getElementById('edit-titulo').value = p.titulo || "";
+    document.getElementById('edit-cliente').value = p.cliente || "";
+    document.getElementById('edit-reserva').value = p.reserva || "";
+    document.getElementById('edit-tipo').value = p.tipo || "Outros";
+    document.getElementById('edit-prioridade').value = p.prioridade || "Media";
+    document.getElementById('edit-data').value = p.data || "";
+    document.getElementById('edit-prazo').value = p.prazo || "";
+    document.getElementById('edit-diretoria').value = p.diretoria || "";
+    document.getElementById('edit-descricao').value = p.descricao || "";
+
+    document.getElementById('modal-editar').classList.remove('hidden');
+}
+
+function fecharModalEdicao() {
+    document.getElementById('modal-editar').classList.add('hidden');
+    idEmEdicao = null;
+}
+
+function salvarEdicao() {
+    if (!idEmEdicao) return;
+    const dadosAtualizados = {
+        titulo: document.getElementById('edit-titulo').value,
+        cliente: document.getElementById('edit-cliente').value,
+        reserva: document.getElementById('edit-reserva').value,
+        tipo: document.getElementById('edit-tipo').value,
+        prioridade: document.getElementById('edit-prioridade').value,
+        data: document.getElementById('edit-data').value,
+        prazo: document.getElementById('edit-prazo').value,
+        diretoria: document.getElementById('edit-diretoria').value,
+        descricao: document.getElementById('edit-descricao').value,
+        historico: firebase.firestore.FieldValue.arrayUnion({
+            data: new Date().toLocaleString('pt-BR'),
+            acao: "Pendência editada",
+            usuario: auth.currentUser.email
+        })
+    };
+    db.collection("pendencias").doc(idEmEdicao).update(dadosAtualizados)
+    .then(() => { alert("Alterações salvas!"); fecharModalEdicao(); })
+    .catch((error) => { alert("Erro ao editar: " + error.message); });
+}
 
 function enviarMensagem(id) {
     const input = document.getElementById(`chat-input-${id}`);
     const texto = input.value;
     if (!texto) return;
     const log = { data: new Date().toLocaleString('pt-BR'), acao: `💬 ${texto}`, usuario: auth.currentUser.email };
-    db.collection("pendencias").doc(id).update({ historico: firebase.firestore.FieldValue.arrayUnion(log) }).then(() => { input.value = ""; toggleHistorico(id); }); // Abre histórico para ver msg
+    db.collection("pendencias").doc(id).update({ historico: firebase.firestore.FieldValue.arrayUnion(log) }).then(() => { input.value = ""; toggleHistorico(id); });
 }
 
 function mudarModoVisualizacao(modo, btn) {
@@ -497,19 +566,7 @@ function gerarLinkGoogleCalendar(dataStr, horaStr, titulo, descricao) {
     const url = new URL("https://calendar.google.com/calendar/render");
     url.searchParams.append("action", "TEMPLATE"); url.searchParams.append("text", titulo); url.searchParams.append("dates", `${start}/${end}`); url.searchParams.append("details", descricao); url.searchParams.append("sf", "true"); url.searchParams.append("output", "xml"); return url.toString();
 }
-function verificarVencimento(id, pendencia) {
-    if (!pendencia.prazo) return;
-    const hoje = new Date().toISOString().split('T')[0];
-    if (hoje > pendencia.prazo && pendencia.status !== 'aprovado' && !pendencia.notificadoVencimento) {
-        const dadosGerente = LISTA_USUARIOS[pendencia.gerenteID];
-        if (dadosGerente) {
-            const templateParams = { to_email: dadosGerente.email, nome_gerente: dadosGerente.nome, nome_pendencia: `[URGENTE - VENCIDO] #${pendencia.numero}`, cliente: pendencia.cliente, reserva: "Prazo expirado." };
-            emailjs.send('service_ywnbbqr', 'template_7ago0v7', templateParams).then(() => {
-                db.collection("pendencias").doc(id).update({ notificadoVencimento: true, historico: firebase.firestore.FieldValue.arrayUnion({ data: new Date().toLocaleString('pt-BR'), acao: "Cobrança automática enviada", usuario: "Sistema" }) });
-            });
-        }
-    }
-}
+
 function exportarExcel(filtroDiretoria) {
     db.collection("pendencias").orderBy("timestamp", "desc").get().then((snap) => {
         let dados = [];
@@ -517,7 +574,7 @@ function exportarExcel(filtroDiretoria) {
             let p = doc.data();
             if (p.diretoria !== filtroDiretoria) return;
             if (p.status === 'aprovado') return;
-            dados.push({ "ID": p.numero||"S/N", "Status": p.status, "Diretoria": p.diretoria, "Título": p.titulo||p.nome, "Prioridade": p.prioridade||"-", "Descrição": p.descricao||"", "Gerente": p.gerente, "Data": p.data, "Prazo": p.prazo, "Cliente": p.cliente, "Link": p.imagemUrl||"" });
+            dados.push({ "ID": p.numero||"S/N", "Tipo": p.tipo||"Geral", "Status": p.status, "Diretoria": p.diretoria, "Título": p.titulo||p.nome, "Prioridade": p.prioridade||"-", "Descrição": p.descricao||"", "Gerente": p.gerente, "Data": p.data, "Prazo": p.prazo, "Cliente": p.cliente });
         });
         if (dados.length === 0) { alert(`Nada encontrado para ${filtroDiretoria}.`); return; }
         const ws = XLSX.utils.json_to_sheet(dados); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, `Pendencias`); XLSX.writeFile(wb, `Relatorio_${filtroDiretoria}.xlsx`);
@@ -553,17 +610,24 @@ function mudarStatus(id, st) {
 }
 function excluirPendencia(id) { if(confirm("Excluir?")) db.collection("pendencias").doc(id).delete(); }
 function filtrar(tipo, el) { filtroAtual = tipo; document.querySelectorAll('.btn-filter').forEach(b=>b.classList.remove('active')); el.classList.add('active'); carregarPendencias(false); }
+
 function atualizarGraficos(dados) {
     if (!dados || dados.length === 0) return;
     const statusCount = { pendente: 0, analise: 0, aprovado: 0 };
     const diretoriaCount = { Roque: 0, Cesar: 0 };
+    const tipoCount = { 'Documentacao': 0, 'Ato': 0, 'FichaContato': 0, 'ProcessoCaixa': 0, 'Outros': 0 };
+
     dados.forEach(p => {
         if (statusCount[p.status] !== undefined) statusCount[p.status]++;
         if (p.diretoria && diretoriaCount[p.diretoria] !== undefined) diretoriaCount[p.diretoria]++;
+        if (p.tipo && tipoCount[p.tipo] !== undefined) tipoCount[p.tipo]++;
+        else tipoCount['Outros']++;
     });
+
     const isDark = document.body.classList.contains('dark-mode');
     const colorText = isDark ? '#e5e7eb' : '#333';
 
+    // Gráfico de Status
     const ctxStatus = document.getElementById('chartStatus').getContext('2d');
     if (chartStatusInstance) chartStatusInstance.destroy();
     chartStatusInstance = new Chart(ctxStatus, {
@@ -572,11 +636,34 @@ function atualizarGraficos(dados) {
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: colorText } }, title: { display: true, text: 'Status das Pendências', color: colorText } } }
     });
 
+    // Gráfico de Diretoria
     const ctxDir = document.getElementById('chartDiretoria').getContext('2d');
     if (chartDiretoriaInstance) chartDiretoriaInstance.destroy();
     chartDiretoriaInstance = new Chart(ctxDir, {
         type: 'bar',
         data: { labels: ['Roque', 'Cesar'], datasets: [{ label: 'Pendências', data: [diretoriaCount.Roque, diretoriaCount.Cesar], backgroundColor: ['#16a34a', '#14532d'] }] },
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, title: { display: true, text: 'Por Diretoria', color: colorText } }, scales: { x: { ticks: { color: colorText } }, y: { ticks: { color: colorText } } } }
+    });
+
+    // Gráfico de Tipos (NOVO)
+    const ctxTipo = document.getElementById('chartTipo').getContext('2d');
+    if (chartTipoInstance) chartTipoInstance.destroy();
+    chartTipoInstance = new Chart(ctxTipo, {
+        type: 'pie',
+        data: {
+            labels: ['Documentação', 'Ato', 'Ficha Contato', 'Proc. Caixa', 'Outros'],
+            datasets: [{
+                data: [tipoCount.Documentacao, tipoCount.Ato, tipoCount.FichaContato, tipoCount.ProcessoCaixa, tipoCount.Outros],
+                backgroundColor: ['#3b82f6', '#8b5cf6', '#ec4899', '#f97316', '#9ca3af']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'right', labels: { color: colorText, boxWidth: 10, font: {size: 10} } },
+                title: { display: true, text: 'Tipos de Pendência', color: colorText }
+            }
+        }
     });
 }

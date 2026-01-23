@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-PT">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -49,7 +49,7 @@
         <section id="area-dashboard" class="card hidden">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                 <h3>📊 Visão Geral & SLA</h3>
-                <button id="btn-equipe" onclick="abrirModalEquipe()" class="hidden btn-secondary" style="font-size:0.8em;">⚙️ Gerenciar Equipe</button>
+                <button id="btn-equipe" onclick="abrirModalEquipe()" class="hidden btn-secondary" style="font-size:0.8em;">⚙️ Equipe</button>
             </div>
             
             <div class="dashboard-grid">
@@ -59,6 +59,9 @@
                 <div class="chart-container">
                     <canvas id="chartDiretoria"></canvas>
                 </div>
+                <div class="chart-container">
+                    <canvas id="chartTipo"></canvas>
+                </div>
             </div>
             <div id="sla-stats" style="margin-top:15px; font-size:0.9em; text-align:center; color:var(--text-secondary);"></div>
         </section>
@@ -66,12 +69,24 @@
         <section id="area-agendamento-form" class="card hidden" style="border-left: 5px solid var(--color-primary);">
             <h3>📅 Solicitar Presença do Admin</h3>
             <div class="grid-form">
-                <select id="ag-gerente" class="select-style">
-                    <option value="" disabled selected>Selecione seu nome...</option>
-                </select>
-                <input type="date" id="ag-data" onclick="this.showPicker()">
-                <input type="time" id="ag-hora" onclick="this.showPicker()">
-                <input type="text" id="ag-motivo" placeholder="Motivo da solicitação">
+                <div>
+                    <label class="label-form">Solicitante</label>
+                    <select id="ag-gerente" class="select-style">
+                        <option value="" disabled selected>Selecione seu nome...</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="label-form">Data</label>
+                    <input type="date" id="ag-data" onclick="this.showPicker()">
+                </div>
+                <div>
+                    <label class="label-form">Hora</label>
+                    <input type="time" id="ag-hora" onclick="this.showPicker()">
+                </div>
+                <div class="full-width-input">
+                    <label class="label-form">Motivo</label>
+                    <input type="text" id="ag-motivo" placeholder="Motivo da solicitação">
+                </div>
             </div>
             <button onclick="salvarAgendamento()" class="btn-primary">Solicitar Agendamento</button>
         </section>
@@ -86,42 +101,71 @@
         <hr style="margin: 30px 0; border: 0; border-top: 2px solid var(--border-color);">
 
         <section id="area-cadastro" class="card hidden">
-            <h3 style="border-bottom:1px solid var(--border-color); padding-bottom:10px;">Nova Pendência</h3>
+            <h3 style="border-bottom:1px solid var(--border-color); padding-bottom:10px; margin-bottom: 20px;">Nova Pendência</h3>
+            
             <div class="grid-form">
-                <input type="text" id="p-titulo" placeholder="Título (Resumo)" style="font-weight:bold;">
-                <input type="text" id="p-cliente" placeholder="Nome do Cliente">
+                <div class="full-width-input">
+                    <label class="label-form">Título (Resumo)</label>
+                    <input type="text" id="p-titulo" placeholder="Ex: Contrato Pendente unidade 302" style="font-weight:bold;">
+                </div>
+
+                <div>
+                    <label class="label-form">Nome do Cliente</label>
+                    <input type="text" id="p-cliente" placeholder="Nome Completo">
+                </div>
+                <div>
+                    <label class="label-form">Nº Reserva/Pasta</label>
+                    <input type="text" id="p-reserva" placeholder="Código ou Nº">
+                </div>
                 
-                <div style="display:flex; gap:10px;">
-                    <input type="text" id="p-reserva" placeholder="Nº Reserva" style="flex:1;">
-                    <select id="p-prioridade" class="select-style" style="flex:1;">
+                <div>
+                    <label class="label-form">Tipo de Pendência</label>
+                    <select id="p-tipo" class="select-style">
+                        <option value="" disabled selected>Selecione o tipo...</option>
+                        <option value="Documentacao">📄 Documentação</option>
+                        <option value="Ato">✍️ Ato</option>
+                        <option value="FichaContato">📇 Ficha de Contato</option>
+                        <option value="ProcessoCaixa">🏦 Processo Caixa</option>
+                        <option value="Outros">⚙️ Outros</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="label-form">Prioridade</label>
+                    <select id="p-prioridade" class="select-style">
                         <option value="Baixa">Prioridade Baixa 🟢</option>
                         <option value="Media" selected>Prioridade Média 🟡</option>
                         <option value="Alta">Prioridade Alta 🔴</option>
                     </select>
                 </div>
                 
-                <div style="display:flex; gap:10px; align-items:center;">
-                    <div style="flex:1">
-                        <label style="font-size:0.8em; color:var(--text-secondary);">Data Ocorrência:</label>
-                        <input type="date" id="p-data" style="margin-top:2px;" onclick="this.showPicker()">
-                    </div>
-                    <div style="flex:1">
-                        <label style="font-size:0.8em; color:#d93025; font-weight:bold;">Prazo Limite:</label>
-                        <input type="date" id="p-prazo" style="margin-top:2px; border-color:#d93025;" onclick="this.showPicker()">
-                    </div>
+                <div>
+                    <label class="label-form">Data Ocorrência</label>
+                    <input type="date" id="p-data" onclick="this.showPicker()">
+                </div>
+                <div>
+                    <label class="label-form" style="color:#d93025; font-weight:bold;">Prazo Limite</label>
+                    <input type="date" id="p-prazo" style="border-color:#d93025;" onclick="this.showPicker()">
                 </div>
                 
-                <select id="p-diretoria" class="select-style">
-                    <option value="" disabled selected>Diretoria...</option>
-                    <option value="Roque">Diretoria Roque</option>
-                    <option value="Cesar">Diretoria Cesar</option>
-                </select>
+                <div>
+                    <label class="label-form">Diretoria</label>
+                    <select id="p-diretoria" class="select-style">
+                        <option value="" disabled selected>Diretoria...</option>
+                        <option value="Roque">Diretoria Roque</option>
+                        <option value="Cesar">Diretoria Cesar</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="label-form">Responsável (Gerente)</label>
+                    <select id="p-responsavel" class="select-style">
+                        <option value="" disabled selected>Responsável...</option>
+                    </select>
+                </div>
 
-                <select id="p-responsavel" class="select-style">
-                    <option value="" disabled selected>Responsável...</option>
-                </select>
-
-                <textarea id="p-descricao" rows="5" placeholder="Descrição detalhada..." class="full-width-input"></textarea>
+                <div class="full-width-input">
+                    <label class="label-form">Descrição Detalhada</label>
+                    <textarea id="p-descricao" rows="5" placeholder="Descreva todos os detalhes aqui..." class="full-width-input"></textarea>
+                </div>
             </div>
             <button id="btn-salvar" onclick="salvarPendencia()" class="btn-primary">Cadastrar e Notificar</button>
         </section>
@@ -173,7 +217,7 @@
     <div id="modal-equipe" class="modal hidden">
         <div class="modal-content card">
             <h3>Gerenciar Equipe</h3>
-            <div class="grid-form">
+            <div class="grid-form" style="grid-template-columns: 1fr;">
                 <input type="text" id="novo-nome" placeholder="Nome">
                 <input type="email" id="novo-email" placeholder="E-mail">
                 <input type="text" id="novo-zap" placeholder="WhatsApp (5541...)">
@@ -182,6 +226,69 @@
             <hr>
             <ul id="lista-usuarios-db" style="list-style:none; padding:0; max-height:200px; overflow-y:auto;"></ul>
             <button onclick="fecharModalEquipe()" class="btn-outline" style="margin-top:10px; width:100%">Fechar</button>
+        </div>
+    </div>
+
+    <div id="modal-editar" class="modal hidden">
+        <div class="modal-content card" style="max-height: 90vh; overflow-y: auto;">
+            <h3 style="border-bottom:1px solid var(--border-color); padding-bottom:10px;">Editar Pendência</h3>
+            
+            <div class="grid-form">
+                <div class="full-width-input">
+                    <label class="label-form">Título</label>
+                    <input type="text" id="edit-titulo">
+                </div>
+                <div>
+                    <label class="label-form">Cliente</label>
+                    <input type="text" id="edit-cliente">
+                </div>
+                <div>
+                    <label class="label-form">Reserva</label>
+                    <input type="text" id="edit-reserva">
+                </div>
+                <div>
+                    <label class="label-form">Tipo</label>
+                    <select id="edit-tipo" class="select-style">
+                        <option value="Documentacao">📄 Documentação</option>
+                        <option value="Ato">✍️ Ato</option>
+                        <option value="FichaContato">📇 Ficha de Contato</option>
+                        <option value="ProcessoCaixa">🏦 Processo Caixa</option>
+                        <option value="Outros">⚙️ Outros</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="label-form">Prioridade</label>
+                    <select id="edit-prioridade" class="select-style">
+                        <option value="Baixa">Baixa 🟢</option>
+                        <option value="Media">Média 🟡</option>
+                        <option value="Alta">Alta 🔴</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="label-form">Data Ocorrência</label>
+                    <input type="date" id="edit-data">
+                </div>
+                <div>
+                    <label class="label-form" style="color:#d93025;">Prazo Limite</label>
+                    <input type="date" id="edit-prazo">
+                </div>
+                <div>
+                    <label class="label-form">Diretoria</label>
+                    <select id="edit-diretoria" class="select-style">
+                        <option value="Roque">Diretoria Roque</option>
+                        <option value="Cesar">Diretoria Cesar</option>
+                    </select>
+                </div>
+                <div class="full-width-input">
+                    <label class="label-form">Descrição</label>
+                    <textarea id="edit-descricao" rows="5" class="full-width-input"></textarea>
+                </div>
+            </div>
+
+            <div style="display:flex; gap:10px;">
+                <button onclick="salvarEdicao()" class="btn-primary">💾 Salvar Alterações</button>
+                <button onclick="fecharModalEdicao()" class="btn-outline">Cancelar</button>
+            </div>
         </div>
     </div>
 
