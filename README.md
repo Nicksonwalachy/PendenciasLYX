@@ -2,9 +2,6 @@
 
 Sistema Web completo para gestão de pendências operacionais, controle de SLA e agendamento de reuniões entre Gerentes e a Diretoria/Administração da T3 Imóveis.
 
-![Dashboard Preview](https://via.placeholder.com/800x400.png?text=Dashboard+Visão+Geral)
-*(Substitua este link por um print real da sua tela de Dashboard)*
-
 ---
 
 ## 🔥 Novas Funcionalidades (Versão 2.0)
@@ -97,5 +94,6 @@ Esta versão traz melhorias significativas de usabilidade, design e gestão:
 | ![Chat](https://via.placeholder.com/400x250.png?text=Chat+e+Historico) | ![Dark Mode](https://via.placeholder.com/400x250.png?text=Dark+Mode+Verde) |
 
 ---
+
 
 *Desenvolvido para T3 Imóveis - 2026*
