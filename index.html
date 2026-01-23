@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Pendências T3</title>
+    <title>Sistema de Pendências T3 - Pro</title>
     <link rel="stylesheet" href="style.css">
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -31,14 +31,27 @@
                 <small id="user-display">...</small>
             </div>
             
-            <div style="display: flex; gap: 10px; align-items: center;">
+            <div style="display: flex; gap: 15px; align-items: center;">
+                <div class="notification-container">
+                    <button class="btn-icon" onclick="toggleNotificacoes()">🔔 <span id="notif-badge" class="badge hidden">0</span></button>
+                    <div id="notif-dropdown" class="dropdown hidden">
+                        <ul id="lista-notificacoes">
+                            <li style="color:#666; padding:10px;">Sem notificações novas</li>
+                        </ul>
+                    </div>
+                </div>
+
                 <button id="btn-theme-toggle" onclick="alternarTema()" class="btn-outline" style="font-size: 1.2rem; padding: 5px 12px;">🌙</button>
                 <button onclick="logout()" class="btn-outline">Sair</button>
             </div>
         </header>
 
         <section id="area-dashboard" class="card hidden">
-            <h3>📊 Visão Geral</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h3>📊 Visão Geral & SLA</h3>
+                <button id="btn-equipe" onclick="abrirModalEquipe()" class="hidden btn-secondary" style="font-size:0.8em;">⚙️ Gerenciar Equipe</button>
+            </div>
+            
             <div class="dashboard-grid">
                 <div class="chart-container">
                     <canvas id="chartStatus"></canvas>
@@ -47,28 +60,20 @@
                     <canvas id="chartDiretoria"></canvas>
                 </div>
             </div>
+            <div id="sla-stats" style="margin-top:15px; font-size:0.9em; text-align:center; color:var(--text-secondary);"></div>
         </section>
 
         <section id="area-agendamento-form" class="card hidden" style="border-left: 5px solid var(--color-primary);">
             <h3>📅 Solicitar Presença do Admin</h3>
             <div class="grid-form">
                 <select id="ag-gerente" class="select-style">
-                    <option value="" disabled selected>Quem é você?</option>
-                    <option value="gerente1">Jihad</option>
-                    <option value="gerente2">Tiago</option>
-                    <option value="gerente3">Delta</option>
-                    <option value="gerente4">Roque</option>
-                    <option value="gerente5">Nathan</option>
-                    <option value="gerente6">Paulo</option>
-                    <option value="gerente7">Guilherme</option>
-                    <option value="gerente8">Pedro</option>
-                    <option value="gerente9">Nickson</option>
+                    <option value="" disabled selected>Selecione seu nome...</option>
                 </select>
                 <input type="date" id="ag-data" onclick="this.showPicker()">
                 <input type="time" id="ag-hora" onclick="this.showPicker()">
                 <input type="text" id="ag-motivo" placeholder="Motivo da solicitação">
             </div>
-            <button onclick="salvarAgendamento()" class="btn-primary">Solicitar Agendamento e Notificar Admin</button>
+            <button onclick="salvarAgendamento()" class="btn-primary">Solicitar Agendamento</button>
         </section>
 
         <div id="container-lista-agendamentos" class="card hidden" style="background-color: var(--bg-secondary);">
@@ -83,7 +88,7 @@
         <section id="area-cadastro" class="card hidden">
             <h3 style="border-bottom:1px solid var(--border-color); padding-bottom:10px;">Nova Pendência</h3>
             <div class="grid-form">
-                <input type="text" id="p-titulo" placeholder="Título da Pendência (Resumo)" style="font-weight:bold;">
+                <input type="text" id="p-titulo" placeholder="Título (Resumo)" style="font-weight:bold;">
                 <input type="text" id="p-cliente" placeholder="Nome do Cliente">
                 
                 <div style="display:flex; gap:10px;">
@@ -107,37 +112,31 @@
                 </div>
                 
                 <select id="p-diretoria" class="select-style">
-                    <option value="" disabled selected>Selecione a Diretoria...</option>
+                    <option value="" disabled selected>Diretoria...</option>
                     <option value="Roque">Diretoria Roque</option>
                     <option value="Cesar">Diretoria Cesar</option>
                 </select>
 
                 <select id="p-responsavel" class="select-style">
-                    <option value="" disabled selected>Selecione o Responsável...</option>
-                    <option value="gerente1">Jihad</option>
-                    <option value="gerente2">Tiago</option>
-                    <option value="gerente3">Delta</option>
-                    <option value="gerente4">Roque</option>
-                    <option value="gerente5">Nathan</option>
-                    <option value="gerente6">Paulo</option>
-                    <option value="gerente7">Guilherme</option>
-                    <option value="gerente8">Pedro</option>
-                    <option value="gerente9">Nickson</option>
+                    <option value="" disabled selected>Responsável...</option>
                 </select>
-
-                <input type="url" id="p-link" placeholder="📎 Cole aqui um link para arquivos (Drive, Dropbox, Fotos)..." class="full-width-input">
 
                 <textarea id="p-descricao" rows="5" placeholder="Descrição detalhada..." class="full-width-input"></textarea>
             </div>
-            <button onclick="salvarPendencia()" class="btn-primary">Cadastrar e Notificar</button>
+            <button id="btn-salvar" onclick="salvarPendencia()" class="btn-primary">Cadastrar e Notificar</button>
         </section>
 
-        <div class="actions-bar" style="flex-wrap: wrap; gap:10px;">
-            <h3>Quadro de Pendências</h3>
+        <div class="actions-bar" style="flex-wrap: wrap; gap:10px; justify-content: space-between;">
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <h3>Pendências</h3>
+                <div class="view-toggle">
+                    <button class="btn-view active" onclick="mudarModoVisualizacao('lista', this)">📄 Lista</button>
+                    <button class="btn-view" onclick="mudarModoVisualizacao('kanban', this)">📋 Kanban</button>
+                </div>
+            </div>
             
-            <input type="text" id="input-pesquisa" placeholder="🔍 Pesquisar cliente ou título..." onkeyup="carregarPendencias()" style="max-width: 250px; margin:0;">
-
-            <div style="display: flex; gap: 10px; align-items: center;">
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap:wrap;">
+                <input type="text" id="input-pesquisa" placeholder="🔍 Buscar..." onkeyup="carregarPendencias()" style="width: 150px; margin:0;">
                 <input type="month" id="filtro-mes" class="input-filter-date" onchange="carregarPendencias()" onclick="this.showPicker()">
                 
                 <button id="btn-relatorio-roque" onclick="exportarExcel('Roque')" class="hidden btn-secondary" style="background-color: var(--color-primary);">📊 Roque</button>
@@ -153,6 +152,36 @@
 
         <div id="lista-pendencias">
             <p style="text-align:center; color:var(--text-secondary)">A carregar...</p>
+        </div>
+        
+        <div id="kanban-pendencias" class="kanban-board hidden">
+            <div class="kanban-col" id="col-pendente" ondrop="drop(event)" ondragover="allowDrop(event)">
+                <div class="kanban-header status-pendente">PENDENTE</div>
+                <div class="kanban-items"></div>
+            </div>
+            <div class="kanban-col" id="col-analise" ondrop="drop(event)" ondragover="allowDrop(event)">
+                <div class="kanban-header status-analise">EM ANÁLISE</div>
+                <div class="kanban-items"></div>
+            </div>
+            <div class="kanban-col" id="col-aprovado" ondrop="drop(event)" ondragover="allowDrop(event)">
+                <div class="kanban-header status-aprovado">FINALIZADO</div>
+                <div class="kanban-items"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-equipe" class="modal hidden">
+        <div class="modal-content card">
+            <h3>Gerenciar Equipe</h3>
+            <div class="grid-form">
+                <input type="text" id="novo-nome" placeholder="Nome">
+                <input type="email" id="novo-email" placeholder="E-mail">
+                <input type="text" id="novo-zap" placeholder="WhatsApp (5541...)">
+            </div>
+            <button onclick="adicionarUsuario()" class="btn-primary" style="margin-bottom:15px;">Adicionar Usuário</button>
+            <hr>
+            <ul id="lista-usuarios-db" style="list-style:none; padding:0; max-height:200px; overflow-y:auto;"></ul>
+            <button onclick="fecharModalEquipe()" class="btn-outline" style="margin-top:10px; width:100%">Fechar</button>
         </div>
     </div>
 
