@@ -8,6 +8,8 @@
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> 
+    
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
@@ -28,10 +30,26 @@
                 <h3>Painel <span id="role-badge">...</span></h3>
                 <small id="user-display">...</small>
             </div>
-            <button onclick="logout()" class="btn-outline">Sair</button>
+            
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button id="btn-theme-toggle" onclick="alternarTema()" class="btn-outline" style="font-size: 1.2rem; padding: 5px 12px;">🌙</button>
+                <button onclick="logout()" class="btn-outline">Sair</button>
+            </div>
         </header>
 
-        <section id="area-agendamento-form" class="card hidden" style="border-left: 5px solid #2563eb;">
+        <section id="area-dashboard" class="card hidden">
+            <h3>📊 Visão Geral</h3>
+            <div class="dashboard-grid">
+                <div class="chart-container">
+                    <canvas id="chartStatus"></canvas>
+                </div>
+                <div class="chart-container">
+                    <canvas id="chartDiretoria"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section id="area-agendamento-form" class="card hidden" style="border-left: 5px solid var(--color-primary);">
             <h3>📅 Solicitar Presença do Admin</h3>
             <div class="grid-form">
                 <select id="ag-gerente" class="select-style">
@@ -46,41 +64,49 @@
                     <option value="gerente8">Pedro</option>
                     <option value="gerente9">Nickson</option>
                 </select>
-                <input type="date" id="ag-data">
-                <input type="time" id="ag-hora">
+                <input type="date" id="ag-data" onclick="this.showPicker()">
+                <input type="time" id="ag-hora" onclick="this.showPicker()">
                 <input type="text" id="ag-motivo" placeholder="Motivo da solicitação">
             </div>
             <button onclick="salvarAgendamento()" class="btn-primary">Solicitar Agendamento e Notificar Admin</button>
         </section>
 
-        <div id="container-lista-agendamentos" class="card hidden" style="background-color: #f8fafc;">
+        <div id="container-lista-agendamentos" class="card hidden" style="background-color: var(--bg-secondary);">
             <h3>Agenda de Solicitações</h3>
             <div id="lista-agendamentos" class="lista-horizontal">
                 <p>A carregar...</p>
             </div>
         </div>
 
-        <hr style="margin: 30px 0; border: 0; border-top: 2px solid #ddd;">
+        <hr style="margin: 30px 0; border: 0; border-top: 2px solid var(--border-color);">
 
         <section id="area-cadastro" class="card hidden">
-            <h3 style="border-bottom:1px solid #eee; padding-bottom:10px;">Nova Pendência</h3>
+            <h3 style="border-bottom:1px solid var(--border-color); padding-bottom:10px;">Nova Pendência</h3>
             <div class="grid-form">
                 <input type="text" id="p-titulo" placeholder="Título da Pendência (Resumo)" style="font-weight:bold;">
                 <input type="text" id="p-cliente" placeholder="Nome do Cliente">
-                <input type="text" id="p-reserva" placeholder="Nº Reserva">
+                
+                <div style="display:flex; gap:10px;">
+                    <input type="text" id="p-reserva" placeholder="Nº Reserva" style="flex:1;">
+                    <select id="p-prioridade" class="select-style" style="flex:1;">
+                        <option value="Baixa">Prioridade Baixa 🟢</option>
+                        <option value="Media" selected>Prioridade Média 🟡</option>
+                        <option value="Alta">Prioridade Alta 🔴</option>
+                    </select>
+                </div>
                 
                 <div style="display:flex; gap:10px; align-items:center;">
                     <div style="flex:1">
-                        <label style="font-size:0.8em; color:#666;">Data Ocorrência:</label>
-                        <input type="date" id="p-data" style="margin-top:2px;">
+                        <label style="font-size:0.8em; color:var(--text-secondary);">Data Ocorrência:</label>
+                        <input type="date" id="p-data" style="margin-top:2px;" onclick="this.showPicker()">
                     </div>
                     <div style="flex:1">
                         <label style="font-size:0.8em; color:#d93025; font-weight:bold;">Prazo Limite:</label>
-                        <input type="date" id="p-prazo" style="margin-top:2px; border-color:#d93025;">
+                        <input type="date" id="p-prazo" style="margin-top:2px; border-color:#d93025;" onclick="this.showPicker()">
                     </div>
                 </div>
                 
-                <select id="p-diretoria" class="select-style" style="border-color: #2f855a; background-color: #f0fff4;">
+                <select id="p-diretoria" class="select-style">
                     <option value="" disabled selected>Selecione a Diretoria...</option>
                     <option value="Roque">Diretoria Roque</option>
                     <option value="Cesar">Diretoria Cesar</option>
@@ -99,18 +125,23 @@
                     <option value="gerente9">Nickson</option>
                 </select>
 
+                <input type="url" id="p-link" placeholder="📎 Cole aqui um link para arquivos (Drive, Dropbox, Fotos)..." class="full-width-input">
+
                 <textarea id="p-descricao" rows="5" placeholder="Descrição detalhada..." class="full-width-input"></textarea>
             </div>
             <button onclick="salvarPendencia()" class="btn-primary">Cadastrar e Notificar</button>
         </section>
 
-        <div class="actions-bar">
+        <div class="actions-bar" style="flex-wrap: wrap; gap:10px;">
             <h3>Quadro de Pendências</h3>
+            
+            <input type="text" id="input-pesquisa" placeholder="🔍 Pesquisar cliente ou título..." onkeyup="carregarPendencias()" style="max-width: 250px; margin:0;">
+
             <div style="display: flex; gap: 10px; align-items: center;">
-                <input type="month" id="filtro-mes" class="input-filter-date" onchange="carregarPendencias()">
+                <input type="month" id="filtro-mes" class="input-filter-date" onchange="carregarPendencias()" onclick="this.showPicker()">
                 
-                <button id="btn-relatorio-roque" onclick="exportarExcel('Roque')" class="hidden btn-secondary" style="background-color: #107c41;">📊 Excel Roque</button>
-                <button id="btn-relatorio-cesar" onclick="exportarExcel('Cesar')" class="hidden btn-secondary" style="background-color: #2f855a;">📊 Excel Cesar</button>
+                <button id="btn-relatorio-roque" onclick="exportarExcel('Roque')" class="hidden btn-secondary" style="background-color: var(--color-primary);">📊 Roque</button>
+                <button id="btn-relatorio-cesar" onclick="exportarExcel('Cesar')" class="hidden btn-secondary" style="background-color: var(--color-primary-dark);">📊 Cesar</button>
             </div>
         </div>
 
@@ -121,7 +152,7 @@
         </div>
 
         <div id="lista-pendencias">
-            <p style="text-align:center; color:#666">A carregar...</p>
+            <p style="text-align:center; color:var(--text-secondary)">A carregar...</p>
         </div>
     </div>
 

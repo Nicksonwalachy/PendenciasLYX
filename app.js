@@ -47,34 +47,61 @@ const ADMIN_EMAIL = "nickson.jean21@gmail.com";
 let filtroAtual = 'todos'; 
 let roleAtual = '';
 let meuGerenteID = ''; 
+let chartStatusInstance = null;
+let chartDiretoriaInstance = null;
 
 // ==========================================
-// 4. LÓGICA DO SISTEMA
+// 4. LÓGICA DE TEMA E INICIALIZAÇÃO
 // ==========================================
+function carregarTemaSalvo() {
+    const temaSalvo = localStorage.getItem('tema');
+    const btn = document.getElementById('btn-theme-toggle');
+    if (temaSalvo === 'dark') {
+        document.body.classList.add('dark-mode');
+        if(btn) btn.innerText = '☀️';
+    } else {
+        if(btn) btn.innerText = '🌙';
+    }
+}
+
+function alternarTema() {
+    const body = document.body;
+    const btn = document.getElementById('btn-theme-toggle');
+    body.classList.toggle('dark-mode');
+    if (body.classList.contains('dark-mode')) {
+        localStorage.setItem('tema', 'dark');
+        btn.innerText = '☀️';
+        // Atualiza cores dos gráficos se necessário
+        atualizarGraficos(dadosGlobaisParaGrafico); 
+    } else {
+        localStorage.setItem('tema', 'light');
+        btn.innerText = '🌙';
+        atualizarGraficos(dadosGlobaisParaGrafico);
+    }
+}
 
 auth.onAuthStateChanged(user => {
     if (user) {
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('app-screen').classList.remove('hidden');
-        
+        carregarTemaSalvo();
         definirMesAtual();
 
         roleAtual = (user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) ? 'Admin' : 'Gerente';
-        
-        if (roleAtual === 'Gerente') {
-            meuGerenteID = identificarGerentePorEmail(user.email);
-        }
+        if (roleAtual === 'Gerente') meuGerenteID = identificarGerentePorEmail(user.email);
 
         document.getElementById('user-display').innerText = user.email;
         document.getElementById('role-badge').innerText = roleAtual;
 
         if (roleAtual === 'Admin') {
             document.getElementById('area-cadastro').classList.remove('hidden');
+            document.getElementById('area-dashboard').classList.remove('hidden'); // Exibe Dashboard
             document.getElementById('btn-relatorio-roque').classList.remove('hidden');
             document.getElementById('btn-relatorio-cesar').classList.remove('hidden');
             document.getElementById('area-agendamento-form').classList.add('hidden');
         } else {
             document.getElementById('area-cadastro').classList.add('hidden');
+            document.getElementById('area-dashboard').classList.add('hidden'); // Esconde Dashboard
             document.getElementById('btn-relatorio-roque').classList.add('hidden');
             document.getElementById('btn-relatorio-cesar').classList.add('hidden');
             document.getElementById('area-agendamento-form').classList.remove('hidden');
@@ -133,13 +160,15 @@ function toggleHistorico(id) {
     if (el) el.classList.toggle('hidden');
 }
 
+// ==========================================
+// 5. FUNÇÕES DE AGENDAMENTO (CALENDAR)
+// ==========================================
 function gerarLinkGoogleCalendar(dataStr, horaStr, titulo, descricao) {
     const start = dataStr.replace(/-/g, '') + 'T' + horaStr.replace(':', '') + '00';
     let horaFim = parseInt(horaStr.split(':')[0]) + 1;
     let minFim = horaStr.split(':')[1];
     if (horaFim < 10) horaFim = '0' + horaFim;
     const end = dataStr.replace(/-/g, '') + 'T' + horaFim + minFim + '00';
-
     const url = new URL("https://calendar.google.com/calendar/render");
     url.searchParams.append("action", "TEMPLATE");
     url.searchParams.append("text", titulo);
@@ -150,45 +179,23 @@ function gerarLinkGoogleCalendar(dataStr, horaStr, titulo, descricao) {
     return url.toString();
 }
 
-// ==========================================
-// 5. FUNÇÕES DE AGENDAMENTO
-// ==========================================
-
 function salvarAgendamento() {
     const gerenteKey = document.getElementById('ag-gerente').value;
     const data = document.getElementById('ag-data').value;
     const hora = document.getElementById('ag-hora').value;
     const motivo = document.getElementById('ag-motivo').value;
 
-    if(!gerenteKey || !data || !hora || !motivo) {
-        alert("Preencha todos os campos do agendamento.");
-        return;
-    }
+    if(!gerenteKey || !data || !hora || !motivo) { alert("Preencha todos os campos."); return; }
 
     const nomeGerente = CADASTRO_GERENTES[gerenteKey] ? CADASTRO_GERENTES[gerenteKey].nome : "Gerente";
 
     db.collection("agendamentos").add({
-        gerente: nomeGerente,
-        gerenteID: gerenteKey,
-        data: data,
-        hora: hora,
-        motivo: motivo,
-        status: 'pendente',
+        gerente: nomeGerente, gerenteID: gerenteKey, data: data, hora: hora, motivo: motivo, status: 'pendente',
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
     }).then(() => {
-        const templateParams = {
-            to_email: DADOS_ADMIN.email,
-            nome_gerente: "Sistema Agenda",
-            nome_pendencia: "AGENDAMENTO: " + motivo, 
-            cliente: "Solicitante: " + nomeGerente,
-            reserva: data.split('-').reverse().join('/') + " às " + hora
-        };
+        const templateParams = { to_email: DADOS_ADMIN.email, nome_gerente: "Sistema Agenda", nome_pendencia: "AGENDAMENTO: " + motivo, cliente: "Solicitante: " + nomeGerente, reserva: data.split('-').reverse().join('/') + " às " + hora };
         emailjs.send('service_ywnbbqr', 'template_7ago0v7', templateParams);
-
-        const msgZap = `Olá Admin, sou ${nomeGerente}. Solicitei presença dia ${data.split('-').reverse().join('/')} às ${hora}.\nMotivo: ${motivo}`;
-        const linkZap = `https://wa.me/${DADOS_ADMIN.whatsapp}?text=${encodeURIComponent(msgZap)}`;
-
-        if(confirm("Solicitação salva! Deseja avisar o Admin no WhatsApp?")) window.open(linkZap, '_blank');
+        if(confirm("Solicitação salva! Avisar Admin no WhatsApp?")) window.open(`https://wa.me/${DADOS_ADMIN.whatsapp}?text=${encodeURIComponent(`Olá Admin, solicitei agendamento: ${motivo}`)}`, '_blank');
         document.getElementById('ag-motivo').value = "";
     }).catch(err => alert("Erro: " + err.message));
 }
@@ -197,75 +204,30 @@ function carregarAgendamentos() {
     db.collection("agendamentos").orderBy("data", "asc").onSnapshot(snapshot => {
         const div = document.getElementById('lista-agendamentos');
         div.innerHTML = "";
-        
         if(snapshot.empty) { div.innerHTML = "<p style='padding:10px; color:#666;'>Nenhum agendamento futuro.</p>"; return; }
 
         snapshot.forEach(doc => {
             const a = doc.data();
             const id = doc.id;
-            
-            let classeTag = "tag-pendente";
-            let textoTag = "Aguardando";
+            let classeTag = "tag-pendente"; let textoTag = "Aguardando";
             if(a.status === 'aceito') { classeTag = "tag-aceito"; textoTag = "Confirmado"; }
             if(a.status === 'recusado') { classeTag = "tag-recusado"; textoTag = "Recusado"; }
-
             let dataF = a.data.split('-').reverse().join('/');
-            
-            const linkCalendar = gerarLinkGoogleCalendar(
-                a.data, 
-                a.hora, 
-                `Reunião com ${a.gerente} (T3 Imóveis)`, 
-                `Motivo: ${a.motivo}\nSolicitado via Sistema de Pendências.`
-            );
-
-            const btnAgenda = `
-                <a href="${linkCalendar}" target="_blank" style="text-decoration:none;">
-                    <button style="background:#4285F4; color:white; border:none; border-radius:4px; padding:5px 10px; font-size:0.8em; margin-top:5px; width:100%; cursor:pointer;">
-                        📅 Adicionar ao Google Agenda
-                    </button>
-                </a>
-            `;
-
-            let areaBotoes = "";
-            let btnExcluirAgenda = "";
-
-            if (roleAtual === 'Admin') {
-                btnExcluirAgenda = `<button class="btn-excluir" style="margin-top:5px;" onclick="excluirAgendamento('${id}')" title="Apagar Agendamento">🗑</button>`;
-                
-                if (a.status === 'pendente') {
-                    areaBotoes = `
-                        <div style="display:flex; gap:5px; margin-top:5px;">
-                            <button class="btn-agenda-aceitar" style="flex:1;" onclick="responderAgendamento('${id}', 'aceito')">✔ Aceitar</button>
-                            <button class="btn-agenda-recusar" style="flex:1;" onclick="responderAgendamento('${id}', 'recusado')">✖ Recusar</button>
-                        </div>
-                    `;
-                }
+            const linkCalendar = gerarLinkGoogleCalendar(a.data, a.hora, `Reunião ${a.gerente}`, a.motivo);
+            const btnAgenda = `<a href="${linkCalendar}" target="_blank" style="text-decoration:none;"><button style="background:#4285F4; color:white; border:none; border-radius:4px; padding:5px; font-size:0.8em; margin-top:5px; width:100%;">📅 Google Agenda</button></a>`;
+            let botoesAdmin = "";
+            if (roleAtual === 'Admin' && a.status === 'pendente') {
+                botoesAdmin = `<button class="btn-agenda-aceitar" onclick="responderAgendamento('${id}', 'aceito')">✔ Aceitar</button> <button class="btn-agenda-recusar" onclick="responderAgendamento('${id}', 'recusado')">✖ Recusar</button>`;
             }
+            const btnExcluir = roleAtual === 'Admin' ? `<button class="btn-excluir" style="border:none; padding:0;" onclick="excluirAgendamento('${id}')">🗑</button>` : "";
 
-            const card = `
-                <div class="card-agenda">
-                    <span class="tag-agenda ${classeTag}">${textoTag}</span>
-                    <h4>${a.gerente}</h4>
-                    <p style="margin:5px 0; font-size:0.9em">📅 ${dataF} às ${a.hora}</p>
-                    <p style="margin:5px 0; color:#666; font-size:0.9em">"${a.motivo}"</p>
-                    ${btnAgenda}
-                    <div style="border-top:1px solid #eee; margin-top:10px; padding-top:5px;">
-                        ${areaBotoes}
-                        <div style="text-align:right;">${btnExcluirAgenda}</div>
-                    </div>
-                </div>`;
-            div.innerHTML += card;
+            div.innerHTML += `<div class="card-agenda"><span class="tag-agenda ${classeTag}">${textoTag}</span><h4>${a.gerente}</h4><p>${dataF} às ${a.hora}<br>${a.motivo}</p>${btnAgenda}<div style="margin-top:10px; display:flex; justify-content:space-between;"><div>${botoesAdmin}</div>${btnExcluir}</div></div>`;
         });
     });
 }
 
-function responderAgendamento(id, resposta) {
-    if(confirm(`Deseja marcar como ${resposta}?`)) db.collection("agendamentos").doc(id).update({ status: resposta });
-}
-
-function excluirAgendamento(id) {
-    if(confirm("Tem certeza que deseja apagar este agendamento?")) db.collection("agendamentos").doc(id).delete();
-}
+function responderAgendamento(id, resposta) { if(confirm(`Marcar como ${resposta}?`)) db.collection("agendamentos").doc(id).update({ status: resposta }); }
+function excluirAgendamento(id) { if(confirm("Excluir?")) db.collection("agendamentos").doc(id).delete(); }
 
 // ==========================================
 // 6. FUNÇÕES DE PENDÊNCIAS
@@ -280,211 +242,208 @@ function salvarPendencia() {
     const reserva = document.getElementById('p-reserva').value;
     const dataOcorr = document.getElementById('p-data').value;
     const prazo = document.getElementById('p-prazo').value;
+    const prioridade = document.getElementById('p-prioridade').value;
+    const linkArquivo = document.getElementById('p-link').value;
 
-    if (!titulo || !gerenteKey || !dataOcorr || !diretoria) {
-        alert("Preencha Título, Diretoria, Gerente e Data.");
-        return;
-    }
+    if (!titulo || !gerenteKey || !dataOcorr || !diretoria) { alert("Preencha Título, Diretoria, Gerente e Data."); return; }
 
     const numeroProtocolo = Math.floor(10000 + Math.random() * 90000);
     const dadosGerente = CADASTRO_GERENTES[gerenteKey];
-    const user = auth.currentUser;
-
-    const logInicial = {
-        data: new Date().toLocaleString('pt-BR'),
-        acao: "Pendência Criada",
-        usuario: user.email
-    };
-
+    
     db.collection("pendencias").add({
-        numero: numeroProtocolo,
-        titulo: titulo,
-        descricao: descricao,
-        nome: titulo, 
-        cliente: cliente,
-        reserva: reserva,
-        data: dataOcorr, 
-        prazo: prazo,
-        diretoria: diretoria, // Salva a diretoria
-        notificadoVencimento: false,
-        gerente: dadosGerente.nome,
-        gerenteID: gerenteKey,
-        status: "pendente",
-        dataResolucao: "",
-        historico: [logInicial],
+        numero: numeroProtocolo, titulo: titulo, descricao: descricao, nome: titulo, 
+        cliente: cliente, reserva: reserva, data: dataOcorr, prazo: prazo, 
+        diretoria: diretoria, prioridade: prioridade, link: linkArquivo,
+        notificadoVencimento: false, gerente: dadosGerente.nome, gerenteID: gerenteKey, 
+        status: "pendente", dataResolucao: "", 
+        historico: [{ data: new Date().toLocaleString('pt-BR'), acao: "Criado", usuario: auth.currentUser.email }],
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
     }).then(() => {
-        const prazoF = prazo ? prazo.split('-').reverse().join('/') : "Sem prazo";
-
-        const templateParams = {
-            to_email: dadosGerente.email,
-            nome_gerente: dadosGerente.nome,
-            nome_pendencia: `#${numeroProtocolo} - ${titulo} (Diretoria ${diretoria})`,
-            cliente: cliente,
-            reserva: reserva
-        };
+        const prazoF = prazo ? prazo.split('-').reverse().join('/') : "S/ Prazo";
+        const templateParams = { to_email: dadosGerente.email, nome_gerente: dadosGerente.nome, nome_pendencia: `#${numeroProtocolo} - ${titulo}`, cliente: cliente, reserva: reserva };
         emailjs.send('service_ywnbbqr', 'template_7ago0v7', templateParams);
-
-        const msgZap = `Olá ${dadosGerente.nome}, Pendência #${numeroProtocolo}\nDiretoria: ${diretoria}\n*Título:* ${titulo}\n*Cliente:* ${cliente}\n*Prazo:* ${prazoF}\n\n*Detalhes:* ${descricao}`;
-        const linkZap = `https://wa.me/${dadosGerente.whatsapp}?text=${encodeURIComponent(msgZap)}`;
-
-        if(confirm(`Pendência #${numeroProtocolo} Salva! Abrir WhatsApp?`)) window.open(linkZap, '_blank');
-        
+        if(confirm("Salvo! WhatsApp?")) window.open(`https://wa.me/${dadosGerente.whatsapp}?text=${encodeURIComponent(`Pendência #${numeroProtocolo}\n${titulo}\nPrazo: ${prazoF}`)}`, '_blank');
         document.querySelectorAll('#area-cadastro input, #area-cadastro textarea').forEach(i => i.value = '');
-        document.getElementById('p-responsavel').value = "";
-        document.getElementById('p-diretoria').value = "";
         definirMesAtual();
-
-    }).catch(err => alert("Erro ao salvar: " + err.message));
+    }).catch(err => alert("Erro: " + err.message));
 }
 
-function verificarVencimento(id, pendencia) {
-    if (!pendencia.prazo) return;
-
-    const hoje = new Date().toISOString().split('T')[0];
-    
-    if (hoje > pendencia.prazo && pendencia.status !== 'aprovado' && !pendencia.notificadoVencimento) {
-        
-        console.log(`Enviando cobrança automática para pendência #${pendencia.numero}`);
-        const dadosGerente = CADASTRO_GERENTES[pendencia.gerenteID];
-        
-        if (dadosGerente) {
-            const templateParams = {
-                to_email: dadosGerente.email,
-                nome_gerente: dadosGerente.nome,
-                nome_pendencia: `[URGENTE - VENCIDO] #${pendencia.numero} - ${pendencia.titulo}`,
-                cliente: pendencia.cliente + " (Prazo expirou em: " + pendencia.prazo.split('-').reverse().join('/') + ")",
-                reserva: pendencia.reserva
-            };
-
-            emailjs.send('service_ywnbbqr', 'template_7ago0v7', templateParams)
-                .then(() => {
-                    console.log("Cobrança enviada.");
-                    db.collection("pendencias").doc(id).update({
-                        notificadoVencimento: true,
-                        historico: firebase.firestore.FieldValue.arrayUnion({
-                            data: new Date().toLocaleString('pt-BR'),
-                            acao: "Cobrança automática de vencimento enviada",
-                            usuario: "Sistema"
-                        })
-                    });
-                });
-        }
-    }
-}
+let dadosGlobaisParaGrafico = []; // Armazena dados para o gráfico
 
 function carregarPendencias() {
     db.collection("pendencias").orderBy("timestamp", "desc").onSnapshot((snapshot) => {
         const lista = document.getElementById('lista-pendencias');
         lista.innerHTML = "";
         const mesFiltro = document.getElementById('filtro-mes').value;
+        const textoPesquisa = document.getElementById('input-pesquisa').value.toLowerCase(); // PESQUISA
+
+        dadosGlobaisParaGrafico = []; // Reseta dados gráfico
+        let itensVisiveis = 0;
 
         if (snapshot.empty) { lista.innerHTML = "<p style='text-align:center'>Nenhuma pendência.</p>"; return; }
-
-        let itensVisiveis = 0;
 
         snapshot.forEach((doc) => {
             const p = doc.data();
             const id = doc.id;
             
-            const protocolo = p.numero ? `#${p.numero}` : "S/N";
-            const nomeDiretoria = p.diretoria ? ` | Dir. ${p.diretoria}` : "";
+            // Dados para o Gráfico (Pega tudo, independente do filtro visual)
+            dadosGlobaisParaGrafico.push(p);
 
+            // FILTROS
             if (p.data && !p.data.startsWith(mesFiltro)) return;
             if (filtroAtual === 'abertos' && p.status === 'aprovado') return;
             if (filtroAtual === 'finalizados' && p.status !== 'aprovado') return;
+            if (roleAtual === 'Gerente' && p.gerenteID !== meuGerenteID) return;
+            
+            // PESQUISA (Busca no titulo, cliente ou numero)
+            const termoBusca = (p.titulo + " " + p.cliente + " " + p.numero).toLowerCase();
+            if (textoPesquisa && !termoBusca.includes(textoPesquisa)) return;
 
-            if (roleAtual === 'Gerente') {
-                if (p.gerenteID !== meuGerenteID) return;
-            }
+            // RENDERIZAÇÃO
+            itensVisiveis++;
+            const protocolo = p.numero ? `#${p.numero}` : "S/N";
+            const nomeDiretoria = p.diretoria ? ` | Dir. ${p.diretoria}` : "";
+            const prioridadeHTML = p.prioridade ? `<span class="tag-prio prio-${p.prioridade}">${p.prioridade}</span>` : "";
+            const linkHTML = p.link ? `<a href="${p.link}" target="_blank" style="display:block; margin-top:5px; font-size:0.9em; color:#2563eb;">📎 Ver Arquivo Anexo</a>` : "";
 
             let htmlVencido = "";
             const hoje = new Date().toISOString().split('T')[0];
-            
             if (p.prazo && p.prazo < hoje && p.status !== 'aprovado') {
-                htmlVencido = `<span class="vencido-badge">⚠️ PRAZO VENCIDO (${p.prazo.split('-').reverse().join('/')})</span>`;
-                if (roleAtual === 'Admin') verificarVencimento(id, p);
-            } else if (p.prazo) {
-                htmlVencido = `<small style="color:#666; margin-left:5px;">(Prazo: ${p.prazo.split('-').reverse().join('/')})</small>`;
-            }
-
-            itensVisiveis++;
-
-            const displayTitulo = p.titulo || p.nome;
-            const displayDesc = p.descricao ? `<p style="margin-top:8px; color:#555; white-space: pre-wrap;">${p.descricao}</p>` : "";
+                htmlVencido = `<span class="vencido-badge">⚠️ VENCIDO (${p.prazo.split('-').reverse().join('/')})</span>`;
+                if (roleAtual === 'Admin' && !p.notificadoVencimento) verificarVencimento(id, p);
+            } else if (p.prazo) htmlVencido = `<small style="margin-left:5px;">(Prazo: ${p.prazo.split('-').reverse().join('/')})</small>`;
 
             let htmlAcao = "";
-            let textoBadge = "";
-            let btnExcluir = "";
+            let btnExcluir = roleAtual === 'Admin' ? `<button class="btn-excluir" onclick="excluirPendencia('${id}')">🗑</button>` : "";
             let areaHistorico = "";
 
             if (roleAtual === 'Admin') {
-                let logsHtml = "";
-                if (p.historico && p.historico.length > 0) {
-                    p.historico.forEach(log => {
-                        logsHtml += `<div class="hist-item"><span class="hist-data">${log.data}</span> ${log.acao} <small>(${log.usuario})</small></div>`;
-                    });
-                } else {
-                    logsHtml = "<div class='hist-item'>Sem histórico registrado.</div>";
-                }
-
-                areaHistorico = `
-                    <button class="btn-historico" onclick="toggleHistorico('${id}')">📜 Histórico de Alterações</button>
-                    <div id="hist-${id}" class="historico-box hidden">
-                        ${logsHtml}
-                    </div>
-                `;
+                let logsHtml = (p.historico || []).map(log => `<div class="hist-item"><span class="hist-data">${log.data}</span> ${log.acao} <small>(${log.usuario})</small></div>`).join('');
+                areaHistorico = `<button class="btn-historico" onclick="toggleHistorico('${id}')">📜 Histórico</button><div id="hist-${id}" class="historico-box hidden">${logsHtml}</div>`;
             }
+
+            // Botão de Comentário
+            const btnComentar = `<button class="btn-comentario" onclick="adicionarComentario('${id}')">💬</button>`;
 
             if (p.status === 'pendente') {
-                textoBadge = "<span style='color:red; font-weight:bold'>PENDENTE</span>";
-                htmlAcao = (roleAtual === 'Gerente') 
-                    ? `<button class="btn-resolver" onclick="mudarStatus('${id}', 'analise')">✅ Resolvi</button>` 
-                    : `<small style='color:#666'>A aguardar...</small>`;
-            } 
-            else if (p.status === 'analise') {
-                textoBadge = "<span style='color:orange; font-weight:bold'>EM APROVAÇÃO</span>";
-                if (roleAtual === 'Admin') {
-                    htmlAcao = `
-                        <button class="btn-aprovar" onclick="mudarStatus('${id}', 'aprovado')">Aprovar</button>
-                        <button class="btn-recusar" onclick="mudarStatus('${id}', 'pendente')">Recusar</button>
-                    `;
-                } else {
-                    htmlAcao = `<small style='color:orange'>Em análise</small>`;
-                }
-            } 
-            else if (p.status === 'aprovado') {
-                 textoBadge = "<span style='color:green; font-weight:bold'>FINALIZADO</span>";
-                 htmlAcao = "✔ OK";
+                htmlAcao = (roleAtual === 'Gerente') ? `<button class="btn-resolver" onclick="mudarStatus('${id}', 'analise')">✅ Resolvi</button>` : `<small>Aguardando...</small>`;
+            } else if (p.status === 'analise') {
+                htmlAcao = (roleAtual === 'Admin') ? `<button class="btn-aprovar" onclick="mudarStatus('${id}', 'aprovado')">Aprovar</button><button class="btn-recusar" onclick="mudarStatus('${id}', 'pendente')">Recusar</button>` : `<small style='color:orange'>Em análise</small>`;
+            } else {
+                htmlAcao = "✔ OK";
             }
 
-            if (roleAtual === 'Admin') {
-                btnExcluir = `<button class="btn-excluir" onclick="excluirPendencia('${id}')">🗑</button>`;
-            }
-
-            let dataF = p.data ? p.data.split('-').reverse().join('/') : '-';
-
-            const card = `
+            lista.innerHTML += `
                 <div class="item-pendencia status-${p.status}">
-                    <div style="flex: 1; margin-right: 15px;">
-                        <div style="margin-bottom:5px">${textoBadge} <span style="color:#999; font-size:0.8em; margin-left:10px;">${protocolo}</span> ${htmlVencido}</div>
-                        <strong style="font-size:1.1em; display:block;">${displayTitulo}</strong>
-                        ${displayDesc}
-                        <div style="margin-top:10px; font-size:0.9em; color:#666;">
-                            <span>Cliente: ${p.cliente} (Res: ${p.reserva})</span><br>
-                            <span style="color:#2563eb; font-weight:bold">Responsável: ${p.gerente}${nomeDiretoria}</span> | <span>${dataF}</span>
-                        </div>
+                    <div style="flex:1; margin-right:15px;">
+                        <div style="margin-bottom:5px"><span style="color:var(--status-${p.status === 'pendente' ? 'pending' : p.status === 'analise' ? 'analysis' : 'approved'}); font-weight:bold">${p.status.toUpperCase()}</span> <span style="font-size:0.8em; margin-left:10px;">${protocolo}</span> ${prioridadeHTML} ${htmlVencido}</div>
+                        <strong style="font-size:1.1em;">${p.titulo || p.nome}</strong>
+                        <p>${p.descricao || ""}</p>
+                        ${linkHTML}
+                        <div style="margin-top:10px; font-size:0.9em;"><span>Cli: ${p.cliente} (Res: ${p.reserva})</span><br><span style="color:var(--color-primary); font-weight:bold">Resp: ${p.gerente}${nomeDiretoria}</span> | <span>${p.data ? p.data.split('-').reverse().join('/') : '-'}</span></div>
                         ${areaHistorico}
                     </div>
                     <div style="text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:5px;">
-                        ${htmlAcao} ${btnExcluir}
+                        <div>${btnComentar} ${htmlAcao}</div>
+                        ${btnExcluir}
                     </div>
                 </div>`;
-            lista.innerHTML += card;
         });
-
-        if (itensVisiveis === 0) lista.innerHTML = "<p style='text-align:center; color:#999; margin-top:20px;'>Nenhuma pendência encontrada para você neste mês/filtro.</p>";
+        
+        if (itensVisiveis === 0) lista.innerHTML = "<p style='text-align:center; margin-top:20px;'>Nenhuma pendência encontrada.</p>";
+        
+        // Atualiza gráficos apenas se for Admin
+        if (roleAtual === 'Admin') atualizarGraficos(dadosGlobaisParaGrafico);
     });
+}
+
+// --- GRÁFICOS (CHART.JS) ---
+function atualizarGraficos(dados) {
+    if (!dados || dados.length === 0) return;
+
+    // Processa dados
+    const statusCount = { pendente: 0, analise: 0, aprovado: 0 };
+    const diretoriaCount = { Roque: 0, Cesar: 0 };
+
+    dados.forEach(p => {
+        if (statusCount[p.status] !== undefined) statusCount[p.status]++;
+        if (p.diretoria && diretoriaCount[p.diretoria] !== undefined) diretoriaCount[p.diretoria]++;
+    });
+
+    const isDark = document.body.classList.contains('dark-mode');
+    const colorText = isDark ? '#e5e7eb' : '#333';
+
+    // Gráfico 1: Status (Doughnut)
+    const ctxStatus = document.getElementById('chartStatus').getContext('2d');
+    if (chartStatusInstance) chartStatusInstance.destroy();
+    chartStatusInstance = new Chart(ctxStatus, {
+        type: 'doughnut',
+        data: {
+            labels: ['Pendente', 'Em Análise', 'Finalizado'],
+            datasets: [{
+                data: [statusCount.pendente, statusCount.analise, statusCount.aprovado],
+                backgroundColor: ['#ef4444', '#f59e0b', '#22c55e']
+            }]
+        },
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false,
+            plugins: { 
+                legend: { position: 'right', labels: { color: colorText } },
+                title: { display: true, text: 'Status das Pendências', color: colorText }
+            } 
+        }
+    });
+
+    // Gráfico 2: Diretoria (Bar)
+    const ctxDir = document.getElementById('chartDiretoria').getContext('2d');
+    if (chartDiretoriaInstance) chartDiretoriaInstance.destroy();
+    chartDiretoriaInstance = new Chart(ctxDir, {
+        type: 'bar',
+        data: {
+            labels: ['Roque', 'Cesar'],
+            datasets: [{
+                label: 'Pendências',
+                data: [diretoriaCount.Roque, diretoriaCount.Cesar],
+                backgroundColor: ['#16a34a', '#14532d']
+            }]
+        },
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false,
+            plugins: { 
+                legend: { display: false },
+                title: { display: true, text: 'Por Diretoria', color: colorText }
+            },
+            scales: {
+                x: { ticks: { color: colorText } },
+                y: { ticks: { color: colorText } }
+            }
+        }
+    });
+}
+
+// --- COMENTÁRIO RÁPIDO ---
+function adicionarComentario(id) {
+    const texto = prompt("Adicionar observação:");
+    if (!texto) return;
+    const novoLog = { data: new Date().toLocaleString('pt-BR'), acao: `💬 ${texto}`, usuario: auth.currentUser.email };
+    db.collection("pendencias").doc(id).update({ historico: firebase.firestore.FieldValue.arrayUnion(novoLog) });
+}
+
+// Demais funções mantidas (verificarVencimento, exportarExcel, mudarStatus...)
+function verificarVencimento(id, pendencia) {
+    if (!pendencia.prazo) return;
+    const hoje = new Date().toISOString().split('T')[0];
+    if (hoje > pendencia.prazo && pendencia.status !== 'aprovado' && !pendencia.notificadoVencimento) {
+        const dadosGerente = CADASTRO_GERENTES[pendencia.gerenteID];
+        if (dadosGerente) {
+            const templateParams = { to_email: dadosGerente.email, nome_gerente: dadosGerente.nome, nome_pendencia: `[URGENTE - VENCIDO] #${pendencia.numero}`, cliente: pendencia.cliente, reserva: "Prazo expirado." };
+            emailjs.send('service_ywnbbqr', 'template_7ago0v7', templateParams).then(() => {
+                db.collection("pendencias").doc(id).update({ notificadoVencimento: true, historico: firebase.firestore.FieldValue.arrayUnion({ data: new Date().toLocaleString('pt-BR'), acao: "Cobrança automática enviada", usuario: "Sistema" }) });
+            });
+        }
+    }
 }
 
 function exportarExcel(filtroDiretoria) {
@@ -492,125 +451,42 @@ function exportarExcel(filtroDiretoria) {
         let dados = [];
         snap.forEach((doc) => {
             let p = doc.data();
-            
             if (p.diretoria !== filtroDiretoria) return;
             if (p.status === 'aprovado') return;
-
-            dados.push({
-                "ID": p.numero || "S/N",
-                "Status": p.status.toUpperCase(),
-                "Diretoria": p.diretoria,
-                "Título": p.titulo || p.nome,
-                "Descrição": p.descricao || "",
-                "Gerente": p.gerente,
-                "Data Ocorrência": p.data ? p.data.split('-').reverse().join('/') : '-',
-                "Prazo": p.prazo ? p.prazo.split('-').reverse().join('/') : '-',
-                "Cliente": p.cliente,
-                "Reserva": p.reserva,
-                "Resolvido em": p.dataResolucao || ""
-            });
+            dados.push({ "ID": p.numero||"S/N", "Status": p.status, "Diretoria": p.diretoria, "Título": p.titulo||p.nome, "Prioridade": p.prioridade||"-", "Descrição": p.descricao||"", "Gerente": p.gerente, "Data": p.data, "Prazo": p.prazo, "Cliente": p.cliente, "Link": p.link||"" });
         });
-        
-        if (dados.length === 0) { 
-            alert(`Nenhuma pendência em aberto encontrada para a Diretoria ${filtroDiretoria}.`); 
-            return; 
-        }
-        
-        const ws = XLSX.utils.json_to_sheet(dados);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, `Pendencias Abertas ${filtroDiretoria}`);
-        XLSX.writeFile(wb, `Relatorio_Abertas_${filtroDiretoria}.xlsx`);
+        if (dados.length === 0) { alert(`Nada encontrado para ${filtroDiretoria}.`); return; }
+        const ws = XLSX.utils.json_to_sheet(dados); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, `Pendencias`); XLSX.writeFile(wb, `Relatorio_${filtroDiretoria}.xlsx`);
     });
 }
 
-// --- FUNÇÃO ATUALIZADA: NOTIFICAR ADMIN ---
 function mudarStatus(id, st) {
-    let msg = "";
-    let dados = { status: st };
-    let textoLog = "";
-    let motivo = "";
-
+    let msg = ""; let dados = { status: st }; let textoLog = ""; let motivo = "";
     if (st === 'pendente') {
-        motivo = prompt("Motivo da devolução (Obrigatório):");
-        if (motivo === null) return;
-        if (!motivo.trim()) { alert("Motivo obrigatório."); return; }
-        dados.dataResolucao = ""; 
-        textoLog = `Admin Recusou. Motivo: ${motivo}`;
-    } 
-    else if (st === 'analise') { 
-        if (!confirm("Confirma resolução?")) return;
-        dados.dataResolucao = new Date().toLocaleString('pt-BR');
-        textoLog = "Gerente marcou como Resolvido";
+        motivo = prompt("Motivo da devolução:"); if (motivo === null || !motivo.trim()) return;
+        dados.dataResolucao = ""; textoLog = `Admin Recusou: ${motivo}`;
+    } else if (st === 'analise') { 
+        if (!confirm("Confirma resolução?")) return; dados.dataResolucao = new Date().toLocaleString('pt-BR'); textoLog = "Gerente Resolveu";
+    } else if (st === 'aprovado') {
+        if (!confirm("Aprovar?")) return; textoLog = "Admin Aprovou";
     }
-    else if (st === 'aprovado') {
-        if (!confirm("Aprovar finalização?")) return;
-        textoLog = "Admin Aprovou a resolução";
-    }
-
-    const novoLog = {
-        data: new Date().toLocaleString('pt-BR'),
-        acao: textoLog,
-        usuario: auth.currentUser.email
-    };
-    dados.historico = firebase.firestore.FieldValue.arrayUnion(novoLog);
-
-    // 1. LÓGICA DE RECUSA (Notifica Gerente)
-    if (st === 'pendente') {
+    dados.historico = firebase.firestore.FieldValue.arrayUnion({ data: new Date().toLocaleString('pt-BR'), acao: textoLog, usuario: auth.currentUser.email });
+    
+    if (st === 'pendente' || st === 'analise') {
         db.collection("pendencias").doc(id).get().then(doc => {
             if (doc.exists) {
                 const p = doc.data();
-                const dadosGerente = CADASTRO_GERENTES[p.gerenteID];
-                if (dadosGerente) {
-                    const templateParams = {
-                        to_email: dadosGerente.email,
-                        nome_gerente: dadosGerente.nome,
-                        nome_pendencia: `[DEVOLVIDA] #${p.numero} - ${p.titulo}`,
-                        cliente: p.cliente,
-                        reserva: `MOTIVO: ${motivo}` 
-                    };
-                    emailjs.send('service_ywnbbqr', 'template_7ago0v7', templateParams);
-                    const msgZap = `Olá ${dadosGerente.nome}, a pendência #${p.numero} foi devolvida.\n*Motivo:* ${motivo}`;
-                    const linkZap = `https://wa.me/${dadosGerente.whatsapp}?text=${encodeURIComponent(msgZap)}`;
-                    window.open(linkZap, '_blank');
+                if(st === 'pendente'){
+                    const d = CADASTRO_GERENTES[p.gerenteID];
+                    if(d) { emailjs.send('service_ywnbbqr', 'template_7ago0v7', { to_email: d.email, nome_pendencia: `[DEVOLVIDA] #${p.numero}`, reserva: `MOTIVO: ${motivo}` }); window.open(`https://wa.me/${d.whatsapp}?text=${encodeURIComponent(`Pendência #${p.numero} devolvida: ${motivo}`)}`, '_blank'); }
+                } else if (st === 'analise') {
+                    emailjs.send('service_ywnbbqr', 'template_7ago0v7', { to_email: DADOS_ADMIN.email, nome_pendencia: `[RESOLVIDA] #${p.numero}`, reserva: `Gerente resolveu.` });
+                    if(confirm("Notificar Admin Zap?")) window.open(`https://wa.me/${DADOS_ADMIN.whatsapp}?text=${encodeURIComponent(`Pendência #${p.numero} resolvida.`)}`, '_blank');
                 }
             }
             return db.collection("pendencias").doc(id).update(dados);
-        }).catch(err => alert("Erro: " + err.message));
-    } 
-    // 2. LÓGICA DE RESOLUÇÃO (Notifica Admin) - NOVO!
-    else if (st === 'analise') {
-        db.collection("pendencias").doc(id).get().then(doc => {
-            if (doc.exists) {
-                const p = doc.data();
-                const nomeGerente = CADASTRO_GERENTES[p.gerenteID] ? CADASTRO_GERENTES[p.gerenteID].nome : "Gerente";
-
-                // E-mail para Admin
-                const templateParams = {
-                    to_email: DADOS_ADMIN.email,
-                    nome_gerente: "Admin",
-                    nome_pendencia: `[RESOLVIDA] #${p.numero} - ${p.titulo}`,
-                    cliente: p.cliente,
-                    reserva: `Gerente ${nomeGerente} marcou como resolvida. Aguardando aprovação.`
-                };
-                emailjs.send('service_ywnbbqr', 'template_7ago0v7', templateParams);
-
-                // WhatsApp para Admin
-                const msgZap = `Olá Admin, a pendência #${p.numero} (${p.titulo}) foi marcada como resolvida por ${nomeGerente}.`;
-                const linkZap = `https://wa.me/${DADOS_ADMIN.whatsapp}?text=${encodeURIComponent(msgZap)}`;
-                
-                if(confirm("Notificar Admin via WhatsApp?")) {
-                    window.open(linkZap, '_blank');
-                }
-            }
-            return db.collection("pendencias").doc(id).update(dados);
-        }).catch(err => alert("Erro: " + err.message));
-    } 
-    // 3. APROVAÇÃO (Só salva)
-    else {
-        db.collection("pendencias").doc(id).update(dados);
-    }
+        });
+    } else { db.collection("pendencias").doc(id).update(dados); }
 }
 
-function excluirPendencia(id) {
-    if(confirm("Excluir permanentemente?")) db.collection("pendencias").doc(id).delete();
-}
+function excluirPendencia(id) { if(confirm("Excluir?")) db.collection("pendencias").doc(id).delete(); }
