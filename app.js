@@ -1,6 +1,14 @@
 // ==========================================
 // 1. CONFIGURAÇÃO E DADOS GLOBAIS
 // ==========================================
+
+const SLA_CONFIG = {
+    'Urgente': 1,
+    'Alta': 2,
+    'Media': 3,
+    'Baixa': 7
+};
+
 const GERENTES_PADRAO = [
     { id: "gerente1", nome: "Jihad", email: "jihad@t3imoveis.com.br", whatsapp: "5541988251027" },
     { id: "gerente2", nome: "Tiago", email: "tiagosilva.mkt@gmail.com", whatsapp: "554195163585" },
@@ -44,12 +52,11 @@ let roleAtual = '';
 let meuGerenteID = ''; 
 let filtroAtual = 'todos'; 
 let viewMode = 'lista'; 
-let idEmEdicao = null; // Variável para controle da edição
+let idEmEdicao = null; 
 
-// Instâncias dos Gráficos
 let chartStatusInstance = null;
 let chartDiretoriaInstance = null;
-let chartTipoInstance = null; // NOVO
+let chartTipoInstance = null;
 
 // ==========================================
 // 3. INICIALIZAÇÃO
@@ -72,6 +79,7 @@ auth.onAuthStateChanged(async user => {
             document.getElementById('area-dashboard').classList.remove('hidden');
             document.getElementById('btn-relatorio-roque').classList.remove('hidden');
             document.getElementById('btn-relatorio-cesar').classList.remove('hidden');
+            document.getElementById('btn-metricas-gerentes').classList.remove('hidden'); // Botão Métricas
             document.getElementById('btn-equipe').classList.remove('hidden'); 
             document.getElementById('area-agendamento-form').classList.add('hidden');
         } else {
@@ -80,6 +88,7 @@ auth.onAuthStateChanged(async user => {
             document.getElementById('area-dashboard').classList.add('hidden');
             document.getElementById('btn-relatorio-roque').classList.add('hidden');
             document.getElementById('btn-relatorio-cesar').classList.add('hidden');
+            document.getElementById('btn-metricas-gerentes').classList.add('hidden'); 
             document.getElementById('btn-equipe').classList.add('hidden');
             document.getElementById('area-agendamento-form').classList.remove('hidden');
             preencherSelectGerenteNoAgendamento();
@@ -157,13 +166,26 @@ function removerUsuario(id) {
 }
 
 // ==========================================
-// 4. PENDÊNCIAS
+// 4. PENDÊNCIAS (C/ SLA AUTOMÁTICO)
 // ==========================================
+
+function calcularDataLimite(dataInicioStr, diasSla) {
+    let dataAtual = new Date(dataInicioStr + "T12:00:00"); 
+    let diasContados = 0;
+
+    while (diasContados < diasSla) {
+        dataAtual.setDate(dataAtual.getDate() + 1);
+        if (dataAtual.getDay() !== 0) { // 0 = Domingo
+            diasContados++;
+        }
+    }
+    return dataAtual;
+}
 
 function salvarPendencia() {
     const btnSalvar = document.getElementById('btn-salvar');
     const textoOriginal = btnSalvar.innerText;
-    btnSalvar.innerText = "Salvando...";
+    btnSalvar.innerText = "Calculando SLA...";
     btnSalvar.disabled = true;
 
     const gerenteKey = document.getElementById('p-responsavel').value;
@@ -172,44 +194,57 @@ function salvarPendencia() {
     const descricao = document.getElementById('p-descricao').value;
     const cliente = document.getElementById('p-cliente').value;
     const reserva = document.getElementById('p-reserva').value;
-    const dataOcorr = document.getElementById('p-data').value;
-    const prazo = document.getElementById('p-prazo').value;
+    
+    let dataOcorr = document.getElementById('p-data').value;
+    if (!dataOcorr) {
+        dataOcorr = new Date().toISOString().split('T')[0];
+    }
+    
     const prioridade = document.getElementById('p-prioridade').value;
-    const tipo = document.getElementById('p-tipo').value; // NOVO CAMPO
+    const tipo = document.getElementById('p-tipo').value;
 
-    if (!titulo || !gerenteKey || !dataOcorr || !diretoria || !tipo) { 
-        alert("Preencha Título, Tipo, Diretoria, Gerente e Data."); 
+    if (!titulo || !gerenteKey || !diretoria || !tipo || !prioridade) { 
+        alert("Preencha Título, Tipo, Diretoria, Prioridade e Gerente."); 
         btnSalvar.innerText = textoOriginal; btnSalvar.disabled = false; return; 
     }
+
+    const diasPrazo = SLA_CONFIG[prioridade] || 3; 
+    const dataLimiteObj = calcularDataLimite(dataOcorr, diasPrazo);
+    const prazoCalculado = dataLimiteObj.toISOString().split('T')[0];
 
     const nomeGerente = LISTA_USUARIOS[gerenteKey] ? LISTA_USUARIOS[gerenteKey].nome : "Gerente";
     const numero = Math.floor(10000 + Math.random() * 90000);
     const dadosGerente = LISTA_USUARIOS[gerenteKey];
 
-    // Gravação
     db.collection("pendencias").add({
         numero: numero, titulo: titulo, descricao: descricao, nome: titulo, 
-        cliente: cliente, reserva: reserva, data: dataOcorr, prazo: prazo, 
+        cliente: cliente, reserva: reserva, 
+        data: dataOcorr, 
+        prazo: prazoCalculado, 
         diretoria: diretoria, prioridade: prioridade, tipo: tipo,
         imagemUrl: "",
         notificadoVencimento: false, gerente: nomeGerente, gerenteID: gerenteKey, 
         status: "pendente", dataResolucao: "", 
-        historico: [{ data: new Date().toLocaleString('pt-BR'), acao: "Criado", usuario: auth.currentUser.email }],
+        historico: [{ data: new Date().toLocaleString('pt-BR'), acao: "Criado (SLA: " + prioridade + ")", usuario: auth.currentUser.email }],
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
     })
     .then(() => {
-        const prazoF = prazo ? prazo.split('-').reverse().join('/') : "S/ Prazo";
+        const prazoF = prazoCalculado.split('-').reverse().join('/');
         if(dadosGerente && dadosGerente.email) {
             const templateParams = { to_email: dadosGerente.email, nome_gerente: dadosGerente.nome, nome_pendencia: `#${numero} - ${titulo} (${tipo})`, cliente: cliente, reserva: reserva };
             emailjs.send('service_ywnbbqr', 'template_7ago0v7', templateParams);
         }
-        if(confirm("Salvo com sucesso! Abrir WhatsApp do gerente?")) {
-            if(dadosGerente && dadosGerente.whatsapp) window.open(`https://wa.me/${dadosGerente.whatsapp}?text=${encodeURIComponent(`Pendência #${numero}\n${titulo}\nTipo: ${tipo}\nPrazo: ${prazoF}`)}`, '_blank');
+        
+        if(confirm(`Salvo! Prazo calculado para ${prazoF} (${prioridade}).\nAbrir WhatsApp do gerente?`)) {
+            if(dadosGerente && dadosGerente.whatsapp) window.open(`https://wa.me/${dadosGerente.whatsapp}?text=${encodeURIComponent(`Pendência #${numero}\n${titulo}\nTipo: ${tipo}\nPrioridade: ${prioridade}\nPrazo Limite: ${prazoF}`)}`, '_blank');
         }
+        
         document.querySelectorAll('#area-cadastro input, #area-cadastro textarea').forEach(i => i.value = '');
         document.getElementById('p-responsavel').value = "";
         document.getElementById('p-diretoria').value = "";
-        document.getElementById('p-tipo').value = ""; // LIMPAR TIPO
+        document.getElementById('p-tipo').value = ""; 
+        document.getElementById('p-prioridade').value = "Media"; 
+        
         definirMesAtual();
         btnSalvar.innerText = textoOriginal; btnSalvar.disabled = false;
     })
@@ -270,7 +305,7 @@ function carregarPendencias() {
         renderizarLista(novasPendencias);
         renderizarKanban(novasPendencias);
         if (roleAtual === 'Admin') atualizarGraficos(dadosGlobaisParaGrafico);
-        calcularSLA(dadosGlobaisParaGrafico);
+        calcularSLAStatus(dadosGlobaisParaGrafico);
     });
 }
 
@@ -307,7 +342,6 @@ function criarHTMLCard(p, mini = false) {
     const protocolo = p.numero ? `#${p.numero}` : "S/N";
     const prio = p.prioridade || "Media";
     
-    // Tratamento visual do tipo
     const mapaTipos = {
         'Documentacao': 'Documentação',
         'Ato': 'Ato',
@@ -319,14 +353,20 @@ function criarHTMLCard(p, mini = false) {
 
     const hoje = new Date().toISOString().split('T')[0];
     let slaBadge = "";
+    
     if (p.prazo) {
-        if (p.prazo < hoje && p.status !== 'aprovado') slaBadge = `<span class="vencido-badge">ATRASADO</span>`;
-        else slaBadge = `<span class="tag-prio" style="color:var(--color-primary); border:1px solid var(--color-primary); background:transparent;">No Prazo</span>`;
+        if (p.prazo < hoje && p.status !== 'aprovado') {
+            slaBadge = `<span class="vencido-badge">ATRASADO</span>`;
+        } else {
+            slaBadge = `<span class="tag-prio" style="color:var(--color-primary); border:1px solid var(--color-primary); background:transparent;">No Prazo</span>`;
+        }
     }
+
+    let classePrio = `prio-${prio}`;
+    if (prio === 'Urgente') classePrio = 'prio-Urgente';
 
     const dragAttr = mini ? `draggable="true" ondragstart="drag(event)" id="card-${p.id}" data-id="${p.id}" data-status="${p.status}"` : "";
 
-    // --- LÓGICA DE BOTÕES ATUALIZADA ---
     let botoes = "";
     const podeEditar = (roleAtual === 'Admin') || (roleAtual === 'Gerente' && p.gerenteID === meuGerenteID && p.status === 'pendente');
     const btnEditar = podeEditar ? `<button class="btn-outline" onclick="abrirModalEdicao('${p.id}')" style="margin-right:5px; padding:6px 10px;" title="Editar">✏️</button>` : "";
@@ -341,7 +381,7 @@ function criarHTMLCard(p, mini = false) {
             <strong>${p.titulo}</strong>
             <div style="font-size:0.8em; color:var(--text-secondary); margin-bottom:5px;">📁 ${textoTipo}</div>
             <small>${p.cliente}</small>
-            <div style="margin-top:5px;">${slaBadge} <span class="tag-prio prio-${prio}">${prio}</span></div>
+            <div style="margin-top:5px;">${slaBadge} <span class="tag-prio ${classePrio}">${prio}</span></div>
             <div style="margin-top:5px; text-align:right;">${botoes}</div>
         </div>`;
     } else {
@@ -361,6 +401,9 @@ function criarHTMLCard(p, mini = false) {
             </div>
         `;
 
+        const dataFormatada = p.data ? p.data.split('-').reverse().join('/') : '-';
+        const prazoFormatado = p.prazo ? p.prazo.split('-').reverse().join('/') : '-';
+
         return `
         <div class="item-pendencia status-${p.status}">
             <div style="flex:1; margin-right:20px; min-width: 0;">
@@ -375,7 +418,8 @@ function criarHTMLCard(p, mini = false) {
 
                 <p style="margin-top:10px;">${p.descricao}</p>
                 <div style="font-size:0.9em; color:var(--text-secondary); margin-top:15px; padding-top:10px; border-top:1px solid var(--border-color);">
-                    <strong>Cliente:</strong> ${p.cliente} | <strong>Resp:</strong> ${p.gerente} | <strong>Data:</strong> ${p.data ? p.data.split('-').reverse().join('/') : '-'}
+                    <strong>Cliente:</strong> ${p.cliente} | <strong>Resp:</strong> ${p.gerente} <br>
+                    <strong>Ocorrência:</strong> ${dataFormatada} | <strong>Prazo SLA:</strong> ${prazoFormatado}
                 </div>
                 ${areaHistorico}
             </div>
@@ -488,7 +532,7 @@ function mudarModoVisualizacao(modo, btn) {
 
 function toggleNotificacoes() { document.getElementById('notif-dropdown').classList.toggle('hidden'); }
 
-function calcularSLA(dados) {
+function calcularSLAStatus(dados) {
     const hoje = new Date().toISOString().split('T')[0];
     let atrasados = 0;
     dados.forEach(p => { if(p.prazo && p.prazo < hoje && p.status !== 'aprovado') atrasados++; });
@@ -645,7 +689,7 @@ function atualizarGraficos(dados) {
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, title: { display: true, text: 'Por Diretoria', color: colorText } }, scales: { x: { ticks: { color: colorText } }, y: { ticks: { color: colorText } } } }
     });
 
-    // Gráfico de Tipos (NOVO)
+    // Gráfico de Tipos
     const ctxTipo = document.getElementById('chartTipo').getContext('2d');
     if (chartTipoInstance) chartTipoInstance.destroy();
     chartTipoInstance = new Chart(ctxTipo, {
@@ -665,5 +709,116 @@ function atualizarGraficos(dados) {
                 title: { display: true, text: 'Tipos de Pendência', color: colorText }
             }
         }
+    });
+}
+
+// ==========================================
+// 8. MÉTRICAS DE GERENTES & RISCO (NOVA LÓGICA)
+// ==========================================
+
+function normalizarDataParaCalculo(dataStr) {
+    if (!dataStr) return null;
+    const regexBR = /(\d{2})\/(\d{2})\/(\d{4})/;
+    const regexISO = /(\d{4})-(\d{2})-(\d{2})/;
+    let dia, mes, ano;
+
+    if (regexBR.test(dataStr)) {
+        const match = dataStr.match(regexBR);
+        dia = parseInt(match[1]); mes = parseInt(match[2]) - 1; ano = parseInt(match[3]);
+    } else if (regexISO.test(dataStr)) {
+        const match = dataStr.match(regexISO);
+        ano = parseInt(match[1]); mes = parseInt(match[2]) - 1; dia = parseInt(match[3]);
+    } else return null;
+
+    return new Date(ano, mes, dia, 12, 0, 0);
+}
+
+function abrirModalMetricas() {
+    document.getElementById('modal-metricas').classList.remove('hidden');
+    calcularMetricasGerentes();
+}
+
+function fecharModalMetricas() {
+    document.getElementById('modal-metricas').classList.add('hidden');
+}
+
+function calcularMetricasGerentes() {
+    const metricas = {};
+    const hoje = new Date();
+    hoje.setHours(0,0,0,0);
+    const hojeISO = hoje.toISOString().split('T')[0];
+
+    // Inicializa todos os gerentes da lista para aparecerem na tabela mesmo sem tarefas
+    for (const [id, user] of Object.entries(LISTA_USUARIOS)) {
+        metricas[user.nome] = { activeOnTime: 0, activeLate: 0, historyTotal: 0, historyLate: 0 };
+    }
+
+    dadosGlobaisParaGrafico.forEach(p => {
+        const nome = p.gerente || "Desconhecido";
+        if (!metricas[nome]) metricas[nome] = { activeOnTime: 0, activeLate: 0, historyTotal: 0, historyLate: 0 };
+
+        // 1. Processos ATIVOS (Pendente ou Análise)
+        if (p.status === 'pendente' || p.status === 'analise') {
+            if (p.prazo && p.prazo < hojeISO) {
+                metricas[nome].activeLate++;
+            } else {
+                metricas[nome].activeOnTime++;
+            }
+        }
+        
+        // 2. Histórico de RESOLUÇÃO (Análise ou Aprovado)
+        // Se já foi resolvido, verificamos se foi entregue no prazo ou não
+        if ((p.status === 'analise' || p.status === 'aprovado') && p.dataResolucao) {
+            metricas[nome].historyTotal++;
+            
+            const dataPrazo = normalizarDataParaCalculo(p.prazo);
+            const dataResolucao = normalizarDataParaCalculo(p.dataResolucao);
+
+            if (dataPrazo && dataResolucao && dataResolucao > dataPrazo) {
+                metricas[nome].historyLate++;
+            }
+        }
+    });
+
+    renderizarTabelaMetricas(metricas);
+}
+
+function renderizarTabelaMetricas(metricas) {
+    const tbody = document.getElementById('tabela-metricas-body');
+    tbody.innerHTML = '';
+
+    Object.keys(metricas).forEach(gerente => {
+        const m = metricas[gerente];
+        
+        // Cálculo de Probabilidade de Atraso (Baseado no histórico)
+        let probabilidade = 0;
+        if (m.historyTotal > 0) {
+            probabilidade = (m.historyLate / m.historyTotal) * 100;
+        }
+
+        // Formatação visual da probabilidade
+        let corProb = "green";
+        let textoProb = probabilidade.toFixed(1) + "%";
+        
+        if (m.historyTotal === 0) {
+            textoProb = "S/ Histórico";
+            corProb = "gray";
+        } else if (probabilidade > 50) {
+            corProb = "red";
+            textoProb = `🚨 ${probabilidade.toFixed(1)}% (Alto Risco)`;
+        } else if (probabilidade > 20) {
+            corProb = "orange";
+        }
+
+        const row = `
+            <tr>
+                <td style="font-weight:bold;">${gerente}</td>
+                <td class="text-center"><span class="badge-table badge-success">${m.activeOnTime}</span></td>
+                <td class="text-center"><span class="badge-table badge-danger">${m.activeLate}</span></td>
+                <td class="text-center">${m.historyTotal} Resolvidos</td>
+                <td class="text-center" style="color:${corProb}; font-weight:bold;">${textoProb}</td>
+            </tr>
+        `;
+        tbody.innerHTML += row;
     });
 }

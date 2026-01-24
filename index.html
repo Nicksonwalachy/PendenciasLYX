@@ -129,12 +129,14 @@
                         <option value="Outros">⚙️ Outros</option>
                     </select>
                 </div>
+
                 <div>
-                    <label class="label-form">Prioridade</label>
+                    <label class="label-form">Prioridade (Define o SLA)</label>
                     <select id="p-prioridade" class="select-style">
-                        <option value="Baixa">Prioridade Baixa 🟢</option>
-                        <option value="Media" selected>Prioridade Média 🟡</option>
-                        <option value="Alta">Prioridade Alta 🔴</option>
+                        <option value="Urgente">🔥 Urgente (1 Dia)</option>
+                        <option value="Alta">🔴 Alta (2 Dias)</option>
+                        <option value="Media" selected>🟡 Média (3 Dias)</option>
+                        <option value="Baixa">🟢 Baixa (7 Dias)</option>
                     </select>
                 </div>
                 
@@ -142,9 +144,10 @@
                     <label class="label-form">Data Ocorrência</label>
                     <input type="date" id="p-data" onclick="this.showPicker()">
                 </div>
+                
                 <div>
-                    <label class="label-form" style="color:#d93025; font-weight:bold;">Prazo Limite</label>
-                    <input type="date" id="p-prazo" style="border-color:#d93025;" onclick="this.showPicker()">
+                    <label class="label-form" style="color:#666;">Prazo Limite (Automático)</label>
+                    <input type="text" id="p-prazo" disabled placeholder="Calculado ao salvar..." style="background-color: #f3f3f3; cursor: not-allowed;">
                 </div>
                 
                 <div>
@@ -185,6 +188,8 @@
                 
                 <button id="btn-relatorio-roque" onclick="exportarExcel('Roque')" class="hidden btn-secondary" style="background-color: var(--color-primary);">📊 Roque</button>
                 <button id="btn-relatorio-cesar" onclick="exportarExcel('Cesar')" class="hidden btn-secondary" style="background-color: var(--color-primary-dark);">📊 Cesar</button>
+                
+                <button id="btn-metricas-gerentes" onclick="abrirModalMetricas()" class="hidden btn-secondary" style="background-color: #2563eb; color: white;">📊 Métricas & Risco</button>
             </div>
         </div>
 
@@ -259,9 +264,10 @@
                 <div>
                     <label class="label-form">Prioridade</label>
                     <select id="edit-prioridade" class="select-style">
-                        <option value="Baixa">Baixa 🟢</option>
-                        <option value="Media">Média 🟡</option>
-                        <option value="Alta">Alta 🔴</option>
+                        <option value="Urgente">🔥 Urgente</option>
+                        <option value="Alta">🔴 Alta</option>
+                        <option value="Media">🟡 Média</option>
+                        <option value="Baixa">🟢 Baixa</option>
                     </select>
                 </div>
                 <div>
@@ -288,6 +294,38 @@
             <div style="display:flex; gap:10px;">
                 <button onclick="salvarEdicao()" class="btn-primary">💾 Salvar Alterações</button>
                 <button onclick="fecharModalEdicao()" class="btn-outline">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-metricas" class="modal hidden">
+        <div class="modal-content card" style="max-width: 900px; width: 95%;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <div>
+                    <h3 style="margin-bottom:5px;">📊 Métricas de Performance & Risco</h3>
+                    <small style="color:var(--text-secondary);">Análise baseada no histórico e status atual</small>
+                </div>
+                <button onclick="fecharModalMetricas()" class="btn-outline" style="border:none; font-size:1.5em;">✕</button>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="tabela-metricas">
+                    <thead>
+                        <tr>
+                            <th>Gerente</th>
+                            <th class="text-center">Em Dia (Atuais)</th>
+                            <th class="text-center">Atrasados (Atuais)</th>
+                            <th class="text-center">Histórico Resolvido</th>
+                            <th class="text-center">Probabilidade de Atraso</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-metricas-body">
+                        </tbody>
+                </table>
+            </div>
+            
+            <div style="margin-top:20px; font-size:0.85em; color:var(--text-secondary); background:var(--bg-secondary); padding:10px; border-radius:6px;">
+                <strong>Nota:</strong> A probabilidade de atraso é calculada dividindo o total de tarefas que o gerente entregou atrasado no passado pelo total de tarefas que ele já resolveu.
             </div>
         </div>
     </div>
