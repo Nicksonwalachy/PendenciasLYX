@@ -57,6 +57,7 @@ let idEmEdicao = null;
 let chartStatusInstance = null;
 let chartDiretoriaInstance = null;
 let chartTipoInstance = null;
+let chartDetalheGerenteInstance = null; // NOVO
 
 // ==========================================
 // 3. INICIALIZAÇÃO
@@ -79,7 +80,7 @@ auth.onAuthStateChanged(async user => {
             document.getElementById('area-dashboard').classList.remove('hidden');
             document.getElementById('btn-relatorio-roque').classList.remove('hidden');
             document.getElementById('btn-relatorio-cesar').classList.remove('hidden');
-            document.getElementById('btn-metricas-gerentes').classList.remove('hidden'); // Botão Métricas
+            document.getElementById('btn-metricas-gerentes').classList.remove('hidden');
             document.getElementById('btn-equipe').classList.remove('hidden'); 
             document.getElementById('area-agendamento-form').classList.add('hidden');
         } else {
@@ -742,13 +743,16 @@ function fecharModalMetricas() {
     document.getElementById('modal-metricas').classList.add('hidden');
 }
 
+function fecharModalDetalheGerente() {
+    document.getElementById('modal-detalhe-gerente').classList.add('hidden');
+}
+
 function calcularMetricasGerentes() {
     const metricas = {};
     const hoje = new Date();
     hoje.setHours(0,0,0,0);
     const hojeISO = hoje.toISOString().split('T')[0];
 
-    // Inicializa todos os gerentes da lista para aparecerem na tabela mesmo sem tarefas
     for (const [id, user] of Object.entries(LISTA_USUARIOS)) {
         metricas[user.nome] = { activeOnTime: 0, activeLate: 0, historyTotal: 0, historyLate: 0 };
     }
@@ -757,7 +761,6 @@ function calcularMetricasGerentes() {
         const nome = p.gerente || "Desconhecido";
         if (!metricas[nome]) metricas[nome] = { activeOnTime: 0, activeLate: 0, historyTotal: 0, historyLate: 0 };
 
-        // 1. Processos ATIVOS (Pendente ou Análise)
         if (p.status === 'pendente' || p.status === 'analise') {
             if (p.prazo && p.prazo < hojeISO) {
                 metricas[nome].activeLate++;
@@ -766,11 +769,8 @@ function calcularMetricasGerentes() {
             }
         }
         
-        // 2. Histórico de RESOLUÇÃO (Análise ou Aprovado)
-        // Se já foi resolvido, verificamos se foi entregue no prazo ou não
         if ((p.status === 'analise' || p.status === 'aprovado') && p.dataResolucao) {
             metricas[nome].historyTotal++;
-            
             const dataPrazo = normalizarDataParaCalculo(p.prazo);
             const dataResolucao = normalizarDataParaCalculo(p.dataResolucao);
 
@@ -789,14 +789,11 @@ function renderizarTabelaMetricas(metricas) {
 
     Object.keys(metricas).forEach(gerente => {
         const m = metricas[gerente];
-        
-        // Cálculo de Probabilidade de Atraso (Baseado no histórico)
         let probabilidade = 0;
         if (m.historyTotal > 0) {
             probabilidade = (m.historyLate / m.historyTotal) * 100;
         }
 
-        // Formatação visual da probabilidade
         let corProb = "green";
         let textoProb = probabilidade.toFixed(1) + "%";
         
@@ -810,9 +807,14 @@ function renderizarTabelaMetricas(metricas) {
             corProb = "orange";
         }
 
+        // AQUI ESTÁ O BOTÃO COM O LINK PARA DETALHES
         const row = `
             <tr>
-                <td style="font-weight:bold;">${gerente}</td>
+                <td>
+                    <button class="btn-link-gerente" onclick="abrirDetalhesGerente('${gerente}')">
+                        ${gerente} 🔗
+                    </button>
+                </td>
                 <td class="text-center"><span class="badge-table badge-success">${m.activeOnTime}</span></td>
                 <td class="text-center"><span class="badge-table badge-danger">${m.activeLate}</span></td>
                 <td class="text-center">${m.historyTotal} Resolvidos</td>
@@ -820,5 +822,92 @@ function renderizarTabelaMetricas(metricas) {
             </tr>
         `;
         tbody.innerHTML += row;
+    });
+}
+
+// === NOVO: FUNÇÃO DE DETALHES DO GERENTE ===
+
+function calcularDiasUteisGastos(dataInicio, dataFim) {
+    let inicio = new Date(dataInicio);
+    let fim = new Date(dataFim);
+    inicio.setHours(12,0,0,0);
+    fim.setHours(12,0,0,0);
+    let diasCorridos = 0;
+    let dataAtual = new Date(inicio);
+    while (dataAtual < fim) {
+        dataAtual.setDate(dataAtual.getDate() + 1);
+        if (dataAtual.getDay() !== 0) { diasCorridos++; }
+    }
+    return diasCorridos === 0 && inicio.getTime() !== fim.getTime() ? 1 : diasCorridos; 
+}
+
+function abrirDetalhesGerente(nomeGerente) {
+    document.getElementById('modal-detalhe-gerente').classList.remove('hidden');
+    document.getElementById('titulo-detalhe-gerente').innerText = `Performance: ${nomeGerente}`;
+
+    const temposPorTipo = {}; 
+
+    dadosGlobaisParaGrafico.forEach(p => {
+        // Filtra apenas o gerente clicado e pendências resolvidas
+        if (p.gerente !== nomeGerente) return;
+        if (!p.dataResolucao || p.status === 'pendente') return;
+
+        let dataInicioStr = p.data;
+        if (p.timestamp && typeof p.timestamp.toDate === 'function') {
+             dataInicioStr = p.timestamp.toDate().toISOString().split('T')[0];
+        }
+
+        const dataInicio = normalizarDataParaCalculo(dataInicioStr);
+        const dataFim = normalizarDataParaCalculo(p.dataResolucao);
+
+        if (!dataInicio || !dataFim) return;
+
+        const dias = calcularDiasUteisGastos(dataInicio, dataFim);
+        const tipo = p.tipo || "Outros";
+
+        if (!temposPorTipo[tipo]) temposPorTipo[tipo] = { totalDias: 0, qtd: 0 };
+        temposPorTipo[tipo].totalDias += dias;
+        temposPorTipo[tipo].qtd++;
+    });
+
+    const labels = Object.keys(temposPorTipo);
+    const data = labels.map(t => (temposPorTipo[t].totalDias / temposPorTipo[t].qtd).toFixed(1));
+
+    // Renderiza o gráfico
+    const ctx = document.getElementById('chartDetalheGerente').getContext('2d');
+    if (chartDetalheGerenteInstance) chartDetalheGerenteInstance.destroy();
+
+    const isDark = document.body.classList.contains('dark-mode');
+    const colorText = isDark ? '#e5e7eb' : '#333';
+
+    if (labels.length === 0) {
+        // Caso não tenha dados
+        alert("Este gerente ainda não possui histórico de resoluções para calcular a média.");
+        return;
+    }
+
+    chartDetalheGerenteInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Média de Dias Úteis para Resolver',
+                data: data,
+                backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true, title: { display: true, text: 'Dias Úteis', color: colorText }, ticks: { color: colorText } },
+                x: { ticks: { color: colorText } }
+            },
+            plugins: {
+                legend: { display: false },
+                title: { display: true, text: 'Tempo Médio por Tipo de Processo', color: colorText }
+            }
+        }
     });
 }

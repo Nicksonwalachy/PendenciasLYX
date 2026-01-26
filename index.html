@@ -303,7 +303,7 @@
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                 <div>
                     <h3 style="margin-bottom:5px;">📊 Métricas de Performance & Risco</h3>
-                    <small style="color:var(--text-secondary);">Análise baseada no histórico e status atual</small>
+                    <small style="color:var(--text-secondary);">Clique no nome do gerente para ver detalhes</small>
                 </div>
                 <button onclick="fecharModalMetricas()" class="btn-outline" style="border:none; font-size:1.5em;">✕</button>
             </div>
@@ -325,7 +325,19 @@
             </div>
             
             <div style="margin-top:20px; font-size:0.85em; color:var(--text-secondary); background:var(--bg-secondary); padding:10px; border-radius:6px;">
-                <strong>Nota:</strong> A probabilidade de atraso é calculada dividindo o total de tarefas que o gerente entregou atrasado no passado pelo total de tarefas que ele já resolveu.
+                <strong>Nota:</strong> A probabilidade de atraso é baseada no % de tarefas entregues fora do prazo no passado.
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-detalhe-gerente" class="modal hidden">
+        <div class="modal-content card" style="max-width: 700px; width: 90%;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h3 id="titulo-detalhe-gerente">Detalhes</h3>
+                <button onclick="fecharModalDetalheGerente()" class="btn-outline" style="border:none; font-size:1.5em;">✕</button>
+            </div>
+            <div class="chart-container" style="height: 350px;">
+                <canvas id="chartDetalheGerente"></canvas>
             </div>
         </div>
     </div>
