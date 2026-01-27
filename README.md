@@ -1,112 +1,88 @@
-# 🚀 Sistema de Controle de Pendências T3 - Versão Pro 2.1
+# 🚀 Sistema de Gestão de Pendências & BI - T3 Imóveis (v2.3)
 
-Sistema Web completo para gestão de pendências operacionais, controle rigoroso de SLA (Service Level Agreement) e métricas de performance para a T3 Imóveis.
-
-![Dashboard Preview](https://via.placeholder.com/800x400.png?text=Dashboard+SLA+e+Metricas)
-*(Substitua este link por um print real da sua tela de Dashboard)*
+Sistema Web completo para gestão operacional de pendências, controle de SLA e **Business Intelligence (BI)** financeiro e estratégico. Focado em reduzir o tempo de resolução de problemas contratuais e financeiros.
 
 ---
 
-## 🔥 Novas Funcionalidades (Versão 2.1)
+## 🔥 Novas Funcionalidades de BI (Business Intelligence)
 
-Esta versão foca na metrificação precisa e automação de prazos:
+A versão 2.3 transforma o sistema em uma ferramenta de decisão estratégica. Abaixo, o detalhamento de cada Dashboard:
 
-### 1. ⏱️ SLA Inteligente e Automático
-O sistema agora calcula o prazo limite automaticamente no momento do cadastro, baseado na prioridade escolhida:
-* **🔥 Urgente:** 1 Dia
-* **🔴 Alta:** 2 Dias
-* **🟡 Média:** 3 Dias
-* **🟢 Baixa:** 7 Dias
+### 1. 💰 KPI: VGV Travado (Valor Geral de Vendas)
+* **O que mostra:** A soma monetária (R$) de todos os contratos/imóveis que estão parados devido a pendências em aberto.
+* **Objetivo:** Gerar senso de urgência. Mostra quanto dinheiro a imobiliária está deixando de faturar (ou atrasando o recebimento) por questões burocráticas.
 
-**Regra de Negócio:** O cálculo considera dias úteis (Sábado conta, **Domingo é pulado**). Se um prazo cair no domingo, ele é jogado para a segunda-feira.
+### 2. 🔄 KPI: Taxa de Retrabalho
+* **O que mostra:** A porcentagem de tarefas que foram enviadas para análise, mas foram **recusadas** pelo Admin e voltaram para o Gerente.
+* **Objetivo:** Medir a qualidade da resolução. Uma taxa alta indica que a equipe está "tentando se livrar" da pendência sem resolver o problema real, gerando gargalo administrativo.
 
-### 2. 📊 Dashboard de Performance (Drill-Down)
-Novo relatório "Tempo de Resolução" disponível para o Administrador:
-* **Visão Geral:** Gráfico de barras mostrando a média de *dias úteis* que cada gerente leva para resolver pendências.
-* **Detalhamento (Drill-Down):** Ao clicar na barra de um gerente, o gráfico muda para mostrar a performance dele dividida por **Tipo de Documento** (Ex: Quanto tempo leva para Documentação vs. Processo Caixa).
+### 3. 📈 Evolução e Tendência (Linha do Tempo)
+* **O que mostra:** Um gráfico de linha comparando, mês a mês:
+    * **Linha Vermelha:** Volume de novas pendências criadas.
+    * **Linha Verde:** Volume de pendências resolvidas.
+* **Análise:**
+    * *Linhas se cruzando ou Verde acima:* Operação saudável.
+    * *Vermelha constantemente acima:* Acúmulo de backlog (risco de colapso operacional).
 
-### 3. 📋 Gestão Visual e Prioridades
-* Nova prioridade **Urgente** com destaque visual pulsante.
-* Indicadores visuais claros de **"NO PRAZO"** ou **"ATRASADO"** nos cartões.
+### 4. ⏳ Aging de Pendências (Envelhecimento)
+* **O que mostra:** Um gráfico de barras que categoriza as pendências abertas pelo tempo que estão travadas:
+    * *1-3 Dias (Normal)*
+    * *4-7 Dias (Atenção)*
+    * *+7 Dias ou +15 Dias (Crítico)*
+* **Objetivo:** Identificar casos "esquecidos" ou complexos que exigem intervenção imediata da diretoria, evitando que processos de financiamento expirem.
 
----
+### 5. 📊 Pareto de Motivos (80/20)
+* **O que mostra:** Gráfico de barras horizontais indicando quais **Tipos** de pendência (Ex: Documentação, Processo Caixa, Ato) causam mais atrasos.
+* **Objetivo:** Identificar a causa raiz. Se 80% dos atrasos vêm de "Documentação", a empresa deve investir em treinamento sobre checklist de documentos.
 
-## 🛠 Funcionalidades Principais
-
-### ✅ Gestão de Tarefas
-* **Kanban Drag & Drop:** Arraste cartões entre *Pendente*, *Em Análise* e *Finalizado*.
-* **Modo Lista:** Visualização compacta para leitura rápida.
-* **Chat Interno:** Histórico de conversas e logs de alteração dentro de cada pendência.
-
-### 👥 Gestão de Equipe
-* **Painel de Usuários:** Adicione ou remova gerentes sem tocar no código.
-* **Agenda:** Solicitação de presença do Admin integrada ao Google Calendar.
-
-### 📈 Relatórios e Exportação
-* Exportação de dados para Excel separada por Diretoria (Roque/Cesar).
-* Gráficos em tempo real de Status, Volumetria por Diretoria e Tipos de Pendência.
+### 6. 🎯 Tabela de Risco & Drill-Down (Por Gerente)
+* **O que mostra:** Uma tabela interativa com a performance individual de cada gerente:
+    * **Em Dia vs. Atrasados:** Quantidade atual.
+    * **Risco (%):** Probabilidade histórica de atraso baseada no comportamento passado.
+* **Funcionalidade Drill-Down:** Ao clicar no nome de um gerente, abre-se um modal detalhando a **Média de Dias Úteis** que aquele gerente específico leva para resolver cada tipo de problema.
 
 ---
 
-## 🔐 Perfis de Acesso
+## 🛠️ Funcionalidades Operacionais
 
-### 👑 Administrador
-* **Visão Total:** Acesso a todas as pendências e todos os dashboards.
-* **Aprovação:** Poder de aprovar ou recusar (devolver) resoluções.
-* **Métricas:** Acesso exclusivo ao botão "⏱️ Tempo Resolução".
-* **Gestão:** Adiciona/Remove usuários e edita qualquer pendência.
-
-### 💼 Gerente
-* **Foco Individual:** Visualiza apenas suas próprias pendências.
-* **Execução:** Pode marcar pendências como "Em Análise" (Resolvido).
-* **Agenda:** Solicita reuniões com a administração.
+* **Controle de SLA Automático:**
+    * *Urgente:* 1 dia útil.
+    * *Alta:* 2 dias úteis.
+    * *Média:* 3 dias úteis.
+    * *Baixa:* 7 dias úteis.
+    * *(Cálculo inteligente que ignora domingos)*.
+* **Agenda Administrativa:**
+    * Gerentes solicitam reuniões/atendimentos.
+    * Integração com **Google Calendar** (Gera link direto para adicionar ao calendário).
+    * Status visual (Pendente, Confirmado, Recusado).
+* **Segurança de Dados:**
+    * **Admin:** Vê tudo, exporta relatórios, gerencia equipe.
+    * **Gerente:** Vê apenas suas próprias pendências, métricas e agenda. Não tem acesso a dados sensíveis de colegas ou exportação global.
+* **Notificações:**
+    * Sistema de "Sininho" visual no app.
+    * Integração com **EmailJS** para disparos de e-mail.
+    * Integração nativa via Link para **WhatsApp Web**.
 
 ---
 
 ## 💻 Tecnologias Utilizadas
 
-* **Frontend:** HTML5, CSS3 (Variáveis CSS e Dark Mode), JavaScript (ES6+).
-* **Backend (Serverless):** Google Firebase Firestore.
-* **Autenticação:** Firebase Auth.
-* **Gráficos:** Chart.js (Interativos com eventos de clique).
-* **Relatórios:** SheetJS (XLSX).
-* **Notificações:** EmailJS.
+* **Frontend:** HTML5, CSS3 (Variáveis CSS, Flexbox, Grid), JavaScript (ES6+).
+* **Backend (Serverless):** Google Firebase (Firestore Database & Authentication).
+* **Visualização de Dados:** Chart.js (Gráficos interativos).
+* **Relatórios:** SheetJS (Exportação para Excel/XLSX).
+* **Comunicação:** EmailJS API.
 
 ---
 
-## ⚙️ Configuração e Instalação
+## ⚙️ Instalação e Configuração
 
-1.  **Clone ou Baixe** os arquivos do projeto.
-2.  **Configure o `app.js`**:
-    * Insira suas chaves do `firebaseConfig`.
-    * Atualize a chave pública do `emailjs.init`.
-3.  **Regras do Firestore:**
-    Certifique-se de que suas regras no Firebase permitem leitura/escrita para usuários autenticados:
-    ```javascript
-    rules_version = '2';
-    service cloud.firestore {
-      match /databases/{database}/documents {
-        match /{document=**} {
-          allow read, write: if request.auth != null;
-        }
-      }
-    }
-    ```
-4.  **Primeiro Acesso:**
-    * O sistema criará automaticamente a coleção de usuários baseada na constante `GERENTES_PADRAO` no primeiro carregamento.
+1.  Clone o repositório.
+2.  No arquivo `app.js`, substitua o objeto `firebaseConfig` pelas credenciais do seu projeto Firebase.
+3.  Atualize a chave pública do `emailjs.init`.
+4.  Abra o `index.html` (ou faça deploy no Firebase Hosting/Vercel).
+5.  **Primeiro Login:** O sistema reconhecerá automaticamente o e-mail definido na constante `DADOS_ADMIN` como Administrador.
 
 ---
 
-## 📸 Galeria
-
-| Dashboard SLA | Kanban |
-| :---: | :---: |
-| ![SLA](https://via.placeholder.com/400x250.png?text=Grafico+Barras+SLA) | ![Kanban](https://via.placeholder.com/400x250.png?text=Kanban+Board) |
-
-| Cadastro Inteligente | Modo Escuro |
-| :---: | :---: |
-| ![Cadastro](https://via.placeholder.com/400x250.png?text=Calculo+Automatico+Prazo) | ![Dark Mode](https://via.placeholder.com/400x250.png?text=Dark+Mode+Verde) |
-
----
-
-*Desenvolvido para T3 Imóveis - 2026*
+> **Nota:** Este sistema foi desenvolvido para alta performance e não requer servidor dedicado (Node/PHP), rodando inteiramente no navegador com backend em nuvem (BaaS).
